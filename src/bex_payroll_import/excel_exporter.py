@@ -19,6 +19,7 @@ class ExcelBackend(Protocol):
 
 class Win32ExcelBackend:
     def recalculate_and_export(self, workbook_path: Path, csv_path: Path) -> None:
+        error_prefix = "Excel could not recalculate and export the PU tab"
         try:
             import win32com.client  # type: ignore[import-not-found]
         except ImportError as exc:
@@ -28,6 +29,8 @@ class Win32ExcelBackend:
 
         excel = None
         workbook = None
+        operation_error = None
+        cleanup_error = None
         try:
             excel = win32com.client.DispatchEx("Excel.Application")
             excel.Visible = False
@@ -41,14 +44,27 @@ class Win32ExcelBackend:
             csv_workbook.SaveAs(str(csv_path), FileFormat=6)
             csv_workbook.Close(SaveChanges=False)
         except Exception as exc:
-            raise ExcelAutomationError(
-                f"Excel could not recalculate and export the PU tab: {exc}"
-            ) from exc
+            operation_error = exc
         finally:
             if workbook is not None:
-                workbook.Close(SaveChanges=True)
+                try:
+                    workbook.Close(SaveChanges=True)
+                except Exception as exc:
+                    cleanup_error = cleanup_error or exc
             if excel is not None:
-                excel.Quit()
+                try:
+                    excel.Quit()
+                except Exception as exc:
+                    cleanup_error = cleanup_error or exc
+
+        if operation_error is not None:
+            raise ExcelAutomationError(
+                f"{error_prefix}: {operation_error}"
+            ) from operation_error
+        if cleanup_error is not None:
+            raise ExcelAutomationError(
+                f"{error_prefix}: {cleanup_error}"
+            ) from cleanup_error
 
 
 def export_pu_csv_with_excel(
