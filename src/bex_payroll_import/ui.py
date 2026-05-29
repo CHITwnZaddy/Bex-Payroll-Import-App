@@ -18,7 +18,11 @@ class PayrollImportApp(tk.Tk):
         self.resizable(False, False)
 
         self.config_state = load_config()
-        self.template_path = tk.StringVar(value=str(self.config_state.template_path or ""))
+        saved_template_path = self.config_state.template_path
+        if saved_template_path and not saved_template_path.is_file():
+            saved_template_path = None
+
+        self.template_path = tk.StringVar(value=str(saved_template_path or ""))
         self.tdr_path = tk.StringVar(value="")
         self.expense_path = tk.StringVar(value="")
         self.expense_skipped = tk.BooleanVar(value=False)
@@ -26,7 +30,7 @@ class PayrollImportApp(tk.Tk):
 
         self.build()
         self.refresh_generate_state()
-        if not self.config_state.template_path or not self.config_state.template_path.exists():
+        if not saved_template_path:
             self.choose_template()
 
     def build(self) -> None:
@@ -92,10 +96,11 @@ class PayrollImportApp(tk.Tk):
         self.refresh_generate_state()
 
     def refresh_generate_state(self) -> None:
-        ready = bool(
-            self.template_path.get()
-            and self.tdr_path.get()
-            and (self.expense_path.get() or self.expense_skipped.get())
+        ready = can_generate(
+            self.template_path.get(),
+            self.tdr_path.get(),
+            self.expense_path.get(),
+            self.expense_skipped.get(),
         )
         self.generate_button.config(state=tk.NORMAL if ready else tk.DISABLED)
 
@@ -126,6 +131,14 @@ class PayrollImportApp(tk.Tk):
 
 def is_validation_stopped(outputs: RunOutputs) -> bool:
     return outputs.validation_path.name.startswith("ValidationErrors_")
+
+
+def can_generate(template_path: str, tdr_path: str, expense_path: str, expense_skipped: bool) -> bool:
+    if not Path(template_path).is_file():
+        return False
+    if not Path(tdr_path).is_file():
+        return False
+    return expense_skipped or Path(expense_path).is_file()
 
 
 def open_folder(path: Path) -> None:
