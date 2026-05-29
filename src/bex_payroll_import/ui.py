@@ -6,7 +6,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox
 
 from bex_payroll_import.config import AppConfig, load_config, save_config
-from bex_payroll_import.models import RunInputs
+from bex_payroll_import.models import RunInputs, RunOutputs
 from bex_payroll_import.runner import run_payroll_import
 
 
@@ -109,19 +109,23 @@ class PayrollImportApp(tk.Tk):
                     expense_skipped=self.expense_skipped.get(),
                 )
             )
-            if outputs.payroll_csv_path:
-                self.status_text.set(f"Payroll import created: {outputs.payroll_csv_path}")
-                messagebox.showinfo("Payroll import created", f"Output folder:\n{outputs.output_dir}")
-            else:
+            if is_validation_stopped(outputs):
                 self.status_text.set(f"Validation stopped the run: {outputs.validation_path}")
                 messagebox.showerror(
                     "Validation stopped the run",
                     f"Open this file for details:\n{outputs.validation_path}",
                 )
+            else:
+                self.status_text.set(f"Payroll import created: {outputs.payroll_csv_path}")
+                messagebox.showinfo("Payroll import created", f"Output folder:\n{outputs.output_dir}")
             open_folder(outputs.output_dir)
         except Exception as exc:
             messagebox.showerror("Payroll import failed", str(exc))
             self.status_text.set(f"Payroll import failed: {exc}")
+
+
+def is_validation_stopped(outputs: RunOutputs) -> bool:
+    return outputs.validation_path.name.startswith("ValidationErrors_")
 
 
 def open_folder(path: Path) -> None:
