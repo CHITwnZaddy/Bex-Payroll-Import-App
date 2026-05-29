@@ -6,7 +6,7 @@ This app is built for one Windows user with:
 
 - Windows
 - local Microsoft Excel installed
-- Python installed
+- Python 3.10+ installed
 - `openpyxl`
 - `pywin32`
 
@@ -15,7 +15,11 @@ This app is built for one Windows user with:
 Open PowerShell in the project folder:
 
 ```powershell
-py -m pip install -e ".[dev,windows]"
+py --version
+```
+
+```powershell
+py -m pip install -e ".[windows]"
 ```
 
 If `pywin32` needs to be installed separately:
@@ -59,7 +63,7 @@ Open the validation error file and correct the source file or template, then rer
 
 Use a known payroll period first.
 
-Before importing into Vista, open the generated CSV and confirm:
+Before importing into Vista, inspect the generated CSV in Notepad without saving it. Confirm:
 
 - no header row
 - one batch code on every row
@@ -68,3 +72,5 @@ Before importing into Vista, open the generated CSV and confirm:
 - expense rows use `Department=DLPTO`
 - expense rows use `Pay type=EXP REIM`
 - expense rows use `Cost Type=L`
+
+If you open the CSV in Excel, close it without saving. Import the original generated CSV file into Vista.
