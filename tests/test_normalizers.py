@@ -86,6 +86,23 @@ def test_normalize_expense_file_applies_defaults(tmp_path: Path) -> None:
     assert rows[0].dollars == Decimal("123.45")
 
 
+def test_normalize_expense_file_treats_whitespace_paid_amount_as_zero(tmp_path: Path) -> None:
+    path = save_workbook(
+        tmp_path / "expense.xlsx",
+        "Expense Transacti",
+        [
+            ["Employee", "Expense Date", "Paid Amount"],
+            ["DOE, JANE", date(2026, 4, 15), "   "],
+        ],
+    )
+    lookup = EmployeeLookup({("jane", "doe"): "E100"})
+
+    rows = normalize_expense_file(path, lookup, "CD0529143708")
+
+    assert len(rows) == 1
+    assert rows[0].dollars == Decimal("0")
+
+
 def test_normalize_expense_file_skips_whitespace_only_employee_rows(tmp_path: Path) -> None:
     path = save_workbook(
         tmp_path / "expense.xlsx",
@@ -103,6 +120,38 @@ def test_normalize_expense_file_skips_whitespace_only_employee_rows(tmp_path: Pa
     assert len(rows) == 1
     assert rows[0].employee_code == "E100"
     assert rows[0].dollars == Decimal("75")
+
+
+def test_normalize_tdr_file_treats_whitespace_hours_as_zero(tmp_path: Path) -> None:
+    path = save_workbook(
+        tmp_path / "tdr.xlsx",
+        "Time Detail Repor",
+        [
+            ["EECode", "Lastname", "Firstname", "Date", "Department", "EarnCode", "EarnHours"],
+            ["E100", "Doe", "Jane", date(2026, 4, 12), "OPS", "REG", "   "],
+        ],
+    )
+
+    rows = normalize_tdr_file(path, "CD0529143708")
+
+    assert len(rows) == 1
+    assert rows[0].hours == Decimal("0")
+
+
+def test_normalize_tdr_file_treats_whitespace_dollars_as_none(tmp_path: Path) -> None:
+    path = save_workbook(
+        tmp_path / "tdr.xlsx",
+        "Time Detail Repor",
+        [
+            ["EECode", "Lastname", "Firstname", "Date", "Department", "EarnCode", "EarnHours", "Dollars"],
+            ["E100", "Doe", "Jane", date(2026, 4, 12), "OPS", "REG", 8, "   "],
+        ],
+    )
+
+    rows = normalize_tdr_file(path, "CD0529143708")
+
+    assert len(rows) == 1
+    assert rows[0].dollars is None
 
 
 def test_normalize_expense_file_raises_for_unmatched_employee(tmp_path: Path) -> None:

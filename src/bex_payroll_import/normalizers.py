@@ -101,15 +101,21 @@ def text_value(row: tuple[object, ...], header_map: dict[str, int], column_name:
 
 
 def decimal_value(value: object) -> Decimal:
-    if value is None or value == "":
+    if value is None:
         return Decimal("0")
-    return Decimal(str(value)).quantize(Decimal("0.01")).normalize()
+    text = str(value).strip()
+    if not text:
+        return Decimal("0")
+    return Decimal(text).quantize(Decimal("0.01")).normalize()
 
 
 def decimal_or_none(value: object) -> Decimal | None:
-    if value is None or value == "":
+    if value is None:
         return None
-    return decimal_value(value)
+    text = str(value).strip()
+    if not text:
+        return None
+    return decimal_value(text)
 
 
 def date_value(value: object) -> date:
