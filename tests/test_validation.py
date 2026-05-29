@@ -8,6 +8,12 @@ from bex_payroll_import.validation import (
 )
 
 
+NO_VALID_ROWS_MESSAGE = "Final PU output has no valid rows."
+NO_VALID_ROWS_FIX = "Confirm the Time Detail Report has payroll rows and rerun."
+HEADER_ROW_MESSAGE = "Final CSV still contains a header row."
+HEADER_ROW_FIX = "Export the PU data rows without headers and rerun."
+
+
 def test_validation_report_blocks_on_errors() -> None:
     report = ValidationReport()
     report.add_error("Missing column", "Add the Date column and rerun.", row_number=2)
@@ -49,9 +55,25 @@ def test_validate_final_csv_blocks_header_row(tmp_path: Path) -> None:
     validate_final_csv(csv_path, report)
 
     assert report.has_errors is True
-    assert "Final CSV still contains a header row." in [
-        message.message for message in report.messages
-    ]
+    assert report.messages[0].message == HEADER_ROW_MESSAGE
+    assert report.messages[0].suggested_fix == HEADER_ROW_FIX
+    assert report.messages[0].source == "PU CSV"
+
+
+def test_validate_final_csv_blocks_quoted_header_row(tmp_path: Path) -> None:
+    csv_path = tmp_path / "PayrollImport.csv"
+    csv_path.write_text(
+        '"Batch code","Employee code",Department\nCD0529143708,E100,DLPTO\n',
+        encoding="utf-8",
+    )
+    report = ValidationReport()
+
+    validate_final_csv(csv_path, report)
+
+    assert report.has_errors is True
+    assert report.messages[0].message == HEADER_ROW_MESSAGE
+    assert report.messages[0].suggested_fix == HEADER_ROW_FIX
+    assert report.messages[0].source == "PU CSV"
 
 
 def test_validate_final_csv_blocks_empty_file(tmp_path: Path) -> None:
@@ -62,6 +84,31 @@ def test_validate_final_csv_blocks_empty_file(tmp_path: Path) -> None:
     validate_final_csv(csv_path, report)
 
     assert report.has_errors is True
-    assert "Final PU output has no valid rows." in [
-        message.message for message in report.messages
-    ]
+    assert report.messages[0].message == NO_VALID_ROWS_MESSAGE
+    assert report.messages[0].suggested_fix == NO_VALID_ROWS_FIX
+    assert report.messages[0].source == "PU CSV"
+
+
+def test_validate_final_csv_blocks_missing_file(tmp_path: Path) -> None:
+    csv_path = tmp_path / "PayrollImport.csv"
+    report = ValidationReport()
+
+    validate_final_csv(csv_path, report)
+
+    assert report.has_errors is True
+    assert report.messages[0].message == NO_VALID_ROWS_MESSAGE
+    assert report.messages[0].suggested_fix == NO_VALID_ROWS_FIX
+    assert report.messages[0].source == "PU CSV"
+
+
+def test_validate_final_csv_blocks_delimiter_only_file(tmp_path: Path) -> None:
+    csv_path = tmp_path / "PayrollImport.csv"
+    csv_path.write_text(",,,,\n,,,,\n", encoding="utf-8")
+    report = ValidationReport()
+
+    validate_final_csv(csv_path, report)
+
+    assert report.has_errors is True
+    assert report.messages[0].message == NO_VALID_ROWS_MESSAGE
+    assert report.messages[0].suggested_fix == NO_VALID_ROWS_FIX
+    assert report.messages[0].source == "PU CSV"

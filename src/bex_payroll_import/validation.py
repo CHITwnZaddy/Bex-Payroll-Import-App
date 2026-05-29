@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 from dataclasses import dataclass, field
+from io import StringIO
 from pathlib import Path
 from typing import Literal
 
@@ -90,10 +91,13 @@ def write_validation_csv(report: ValidationReport, output_path: Path) -> None:
 
 
 def validate_final_csv(csv_path: Path, report: ValidationReport) -> None:
+    no_valid_rows_message = "Final PU output has no valid rows."
+    no_valid_rows_fix = "Confirm the Time Detail Report has payroll rows and rerun."
+
     if not csv_path.exists():
         report.add_error(
-            "Final PU output has no valid rows.",
-            "Confirm the Time Detail Report has payroll rows and rerun.",
+            no_valid_rows_message,
+            no_valid_rows_fix,
             source="PU CSV",
         )
         return
@@ -101,14 +105,22 @@ def validate_final_csv(csv_path: Path, report: ValidationReport) -> None:
     text = csv_path.read_text(encoding="utf-8")
     if not text.strip():
         report.add_error(
-            "Final PU output has no valid rows.",
-            "Confirm the Time Detail Report has payroll rows and rerun.",
+            no_valid_rows_message,
+            no_valid_rows_fix,
             source="PU CSV",
         )
         return
 
-    first_line = text.splitlines()[0]
-    first_cells = [cell.strip().lower() for cell in first_line.split(",")]
+    rows = list(csv.reader(StringIO(text)))
+    if not any(cell.strip() for row in rows for cell in row):
+        report.add_error(
+            no_valid_rows_message,
+            no_valid_rows_fix,
+            source="PU CSV",
+        )
+        return
+
+    first_cells = [cell.strip().lower() for cell in rows[0]]
     if "batch code" in first_cells or "employee code" in first_cells:
         report.add_error(
             "Final CSV still contains a header row.",
