@@ -36,7 +36,11 @@ def run_payroll_import(
     if report.has_errors:
         return validation_error_outputs(batch_code, paths, report)
 
-    copy_template_to_audit(inputs.template_path, paths.audit_workbook_path)
+    try:
+        copy_template_to_audit(inputs.template_path, paths.audit_workbook_path)
+    except Exception as exc:
+        report.add_error(str(exc), SOURCE_FIX, source=SOURCE_TEMPLATE)
+        return validation_error_outputs(batch_code, paths, report)
 
     if inputs.expense_path is None and not inputs.expense_skipped:
         report.add_error(
