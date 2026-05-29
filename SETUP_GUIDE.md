@@ -74,3 +74,19 @@ Before importing into Vista, inspect the generated CSV in Notepad without saving
 - expense rows use `Cost Type=L`
 
 If you open the CSV in Excel, close it without saving. Import the original generated CSV file into Vista.
+
+## Optional packaged app
+
+Build the `.exe` on Windows:
+
+```powershell
+py -m PyInstaller --onefile --windowed --name BEXPayrollImport src\bex_payroll_import\__main__.py
+```
+
+Run:
+
+```powershell
+.\dist\BEXPayrollImport.exe
+```
+
+Give the user the `.exe` only after a successful test against a known payroll period.
