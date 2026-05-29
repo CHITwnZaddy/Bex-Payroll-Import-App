@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 
 from bex_payroll_import.models import RunInputs
 from bex_payroll_import.runner import run_payroll_import
@@ -12,6 +12,12 @@ class FakeExcelBackend:
     def recalculate_and_export(self, workbook_path: Path, csv_path: Path) -> None:
         csv_path.parent.mkdir(parents=True, exist_ok=True)
         csv_path.write_text("CD0529143708,E100,DLPTO,REG,8,100,200,L,04/12/2026,0\n", encoding="utf-8")
+
+
+class HeaderOnlyExcelBackend:
+    def recalculate_and_export(self, workbook_path: Path, csv_path: Path) -> None:
+        csv_path.parent.mkdir(parents=True, exist_ok=True)
+        csv_path.write_text("Batch code,Employee code\n", encoding="utf-8")
 
 
 def make_template(path: Path) -> Path:
@@ -27,6 +33,14 @@ def make_template(path: Path) -> Path:
     key.append(["E100", "Doe", "Jane"])
     workbook.save(path)
     return path
+
+
+def cell_date(value: object) -> date:
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    raise AssertionError(f"Expected date-like value, got {value!r}")
 
 
 def test_run_payroll_import_success_with_expenses(tmp_path: Path) -> None:
@@ -56,6 +70,19 @@ def test_run_payroll_import_success_with_expenses(tmp_path: Path) -> None:
     assert outputs.audit_workbook_path.exists()
     assert outputs.validation_path.exists()
 
+    workbook = load_workbook(outputs.audit_workbook_path, data_only=False)
+    try:
+        tdr = workbook["TDR"]
+        assert tdr["B3"].value == "E100"
+        assert cell_date(tdr["H3"].value) == date(2026, 4, 15)
+        assert tdr["L3"].value == "DLPTO"
+        assert tdr["M3"].value == "EXP REIM"
+        assert tdr["N3"].value == 0
+        assert tdr["O3"].value == 55
+        assert tdr["Y3"].value == "L"
+    finally:
+        workbook.close()
+
 
 def test_run_payroll_import_hard_stops_when_expense_missing_and_not_confirmed(tmp_path: Path) -> None:
     template_path = make_template(tmp_path / "template.xlsx")
@@ -70,5 +97,27 @@ def test_run_payroll_import_hard_stops_when_expense_missing_and_not_confirmed(tm
     )
 
     assert outputs.payroll_csv_path is None
+    assert outputs.validation_path.name.startswith("ValidationErrors_")
+    assert outputs.validation_path.exists()
+
+
+def test_run_payroll_import_preserves_exported_csv_when_final_validation_fails(tmp_path: Path) -> None:
+    template_path = make_template(tmp_path / "template.xlsx")
+    source_dir = tmp_path / "source"
+    source_dir.mkdir()
+    tdr_path = save_workbook(
+        source_dir / "tdr.xlsx",
+        "Time Detail Repor",
+        [["EECode", "Lastname", "Firstname", "Date", "Department", "EarnCode", "EarnHours"], ["E100", "Doe", "Jane", "04/12/2026", "DLPTO", "REG", 8]],
+    )
+
+    outputs = run_payroll_import(
+        RunInputs(template_path=template_path, tdr_path=tdr_path, expense_path=None, expense_skipped=True),
+        now=datetime(2026, 5, 29, 14, 37, 8),
+        excel_backend=HeaderOnlyExcelBackend(),
+    )
+
+    assert outputs.payroll_csv_path is not None
+    assert outputs.payroll_csv_path.exists()
     assert outputs.validation_path.name.startswith("ValidationErrors_")
     assert outputs.validation_path.exists()
