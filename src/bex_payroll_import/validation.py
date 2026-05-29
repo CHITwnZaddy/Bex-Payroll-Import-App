@@ -87,3 +87,31 @@ def write_validation_csv(report: ValidationReport, output_path: Path) -> None:
                     "suggested_fix": message.suggested_fix,
                 }
             )
+
+
+def validate_final_csv(csv_path: Path, report: ValidationReport) -> None:
+    if not csv_path.exists():
+        report.add_error(
+            "Final PU output has no valid rows.",
+            "Confirm the Time Detail Report has payroll rows and rerun.",
+            source="PU CSV",
+        )
+        return
+
+    text = csv_path.read_text(encoding="utf-8")
+    if not text.strip():
+        report.add_error(
+            "Final PU output has no valid rows.",
+            "Confirm the Time Detail Report has payroll rows and rerun.",
+            source="PU CSV",
+        )
+        return
+
+    first_line = text.splitlines()[0]
+    first_cells = [cell.strip().lower() for cell in first_line.split(",")]
+    if "batch code" in first_cells or "employee code" in first_cells:
+        report.add_error(
+            "Final CSV still contains a header row.",
+            "Export the PU data rows without headers and rerun.",
+            source="PU CSV",
+        )
