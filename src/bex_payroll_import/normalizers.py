@@ -63,10 +63,10 @@ def normalize_expense_file(
             sheet.iter_rows(min_row=header_row.row_number + 1, values_only=True),
             start=header_row.row_number + 1,
         ):
-            raw_employee = cell(row, header_row.header_map, "Employee")
-            if not raw_employee:
+            employee = text_value(row, header_row.header_map, "Employee")
+            if not employee:
                 continue
-            identity = parse_expense_employee(raw_employee)
+            identity = parse_expense_employee(employee)
             rows.append(
                 NormalizedPayrollRow(
                     batch_code=batch_code,

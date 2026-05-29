@@ -86,6 +86,25 @@ def test_normalize_expense_file_applies_defaults(tmp_path: Path) -> None:
     assert rows[0].dollars == Decimal("123.45")
 
 
+def test_normalize_expense_file_skips_whitespace_only_employee_rows(tmp_path: Path) -> None:
+    path = save_workbook(
+        tmp_path / "expense.xlsx",
+        "Expense Transacti",
+        [
+            ["Employee", "Expense Date", "Paid Amount"],
+            ["   ", date(2026, 4, 15), 50],
+            ["DOE, JANE", date(2026, 4, 16), 75],
+        ],
+    )
+    lookup = EmployeeLookup({("jane", "doe"): "E100"})
+
+    rows = normalize_expense_file(path, lookup, "CD0529143708")
+
+    assert len(rows) == 1
+    assert rows[0].employee_code == "E100"
+    assert rows[0].dollars == Decimal("75")
+
+
 def test_normalize_expense_file_raises_for_unmatched_employee(tmp_path: Path) -> None:
     path = save_workbook(
         tmp_path / "expense.xlsx",
