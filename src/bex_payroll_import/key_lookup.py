@@ -59,7 +59,14 @@ def load_employee_lookup(template_path: Path) -> EmployeeLookup:
             first_key = normalize_name(str(first_name)) if first_name is not None else ""
             last_key = normalize_name(str(last_name)) if last_name is not None else ""
             if code_text and first_key and last_key:
-                code_by_name[(first_key, last_key)] = code_text
+                key = (first_key, last_key)
+                existing_code = code_by_name.get(key)
+                if existing_code and existing_code != code_text:
+                    raise ValueError(
+                        f"Duplicate employee name in Key tab for {first_name} {last_name}: "
+                        f"{existing_code} and {code_text}"
+                    )
+                code_by_name[key] = code_text
         return EmployeeLookup(code_by_name)
     finally:
         workbook.close()

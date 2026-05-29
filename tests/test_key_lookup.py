@@ -54,6 +54,22 @@ def test_lookup_skips_rows_with_blank_codes_after_stripping(tmp_path: Path) -> N
         lookup.resolve_code("Jane", "Doe")
 
 
+def test_lookup_rejects_duplicate_employee_names_with_different_codes(
+    tmp_path: Path,
+) -> None:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Key"
+    sheet.append(["Employee code", "Last Name", "First Name"])
+    sheet.append(["E100", "Smith", "John"])
+    sheet.append(["E200", " smith ", " JOHN "])
+    template_path = tmp_path / "template.xlsx"
+    workbook.save(template_path)
+
+    with pytest.raises(ValueError, match="Duplicate employee name in Key tab"):
+        load_employee_lookup(template_path)
+
+
 def test_lookup_raises_for_unmatched_employee() -> None:
     lookup = EmployeeLookup({("jane", "doe"): "E100"})
 
