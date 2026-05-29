@@ -16,6 +16,7 @@ from bex_payroll_import.validation import ValidationReport, validate_final_csv, 
 SOURCE_TDR = "Time Detail Report"
 SOURCE_EXPENSE = "Expense Transaction"
 SOURCE_EXPORT = "PU CSV"
+SOURCE_TEMPLATE = "Template"
 
 SOURCE_FIX = "Correct the source file or template lookup data, then rerun."
 
@@ -56,7 +57,11 @@ def run_payroll_import(
     if report.has_errors:
         return validation_error_outputs(batch_code, paths, report)
 
-    write_tdr_rows(paths.audit_workbook_path, payroll_rows)
+    try:
+        write_tdr_rows(paths.audit_workbook_path, payroll_rows)
+    except Exception as exc:
+        report.add_error(str(exc), SOURCE_FIX, source=SOURCE_TEMPLATE)
+        return validation_error_outputs(batch_code, paths, report)
 
     exported_csv_path: Path | None = None
     try:

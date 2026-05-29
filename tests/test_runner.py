@@ -35,6 +35,17 @@ def make_template(path: Path) -> Path:
     return path
 
 
+def make_template_without_tdr(path: Path) -> Path:
+    workbook = Workbook()
+    pu = workbook.active
+    pu.title = "PU"
+    key = workbook.create_sheet("Key")
+    key.append(["Employee code", "Last Name", "First Name"])
+    key.append(["E100", "Doe", "Jane"])
+    workbook.save(path)
+    return path
+
+
 def cell_date(value: object) -> date:
     if isinstance(value, datetime):
         return value.date()
@@ -99,6 +110,28 @@ def test_run_payroll_import_hard_stops_when_expense_missing_and_not_confirmed(tm
     assert outputs.payroll_csv_path is None
     assert outputs.validation_path.name.startswith("ValidationErrors_")
     assert outputs.validation_path.exists()
+
+
+def test_run_payroll_import_reports_template_write_failure(tmp_path: Path) -> None:
+    template_path = make_template_without_tdr(tmp_path / "template.xlsx")
+    source_dir = tmp_path / "source"
+    source_dir.mkdir()
+    tdr_path = save_workbook(
+        source_dir / "tdr.xlsx",
+        "Time Detail Repor",
+        [["EECode", "Lastname", "Firstname", "Date", "Department", "EarnCode", "EarnHours"], ["E100", "Doe", "Jane", "04/12/2026", "DLPTO", "REG", 8]],
+    )
+
+    outputs = run_payroll_import(
+        RunInputs(template_path=template_path, tdr_path=tdr_path, expense_path=None, expense_skipped=True),
+        now=datetime(2026, 5, 29, 14, 37, 8),
+        excel_backend=FakeExcelBackend(),
+    )
+
+    assert outputs.payroll_csv_path is None
+    assert outputs.validation_path.name.startswith("ValidationErrors_")
+    assert outputs.validation_path.exists()
+    assert "Template is missing the TDR tab." in outputs.validation_path.read_text(encoding="utf-8")
 
 
 def test_run_payroll_import_preserves_exported_csv_when_final_validation_fails(tmp_path: Path) -> None:
