@@ -5,6 +5,7 @@ from openpyxl import Workbook
 
 from bex_payroll_import.key_lookup import (
     EmployeeLookup,
+    cell_value,
     load_employee_lookup,
     parse_expense_employee,
 )
@@ -38,8 +39,27 @@ def test_lookup_employee_code_from_key_tab(tmp_path: Path) -> None:
     assert lookup.resolve_code("jane", "doe") == "E100"
 
 
+def test_lookup_skips_rows_with_blank_codes_after_stripping(tmp_path: Path) -> None:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Key"
+    sheet.append(["Employee code", "Last Name", "First Name"])
+    sheet.append(["   ", "Doe", "Jane"])
+    template_path = tmp_path / "template.xlsx"
+    workbook.save(template_path)
+
+    lookup = load_employee_lookup(template_path)
+
+    with pytest.raises(KeyError, match="No employee code found"):
+        lookup.resolve_code("Jane", "Doe")
+
+
 def test_lookup_raises_for_unmatched_employee() -> None:
     lookup = EmployeeLookup({("jane", "doe"): "E100"})
 
     with pytest.raises(KeyError, match="No employee code found"):
         lookup.resolve_code("John", "Doe")
+
+
+def test_cell_value_rejects_zero_index() -> None:
+    assert cell_value(("first", "last"), 0) is None

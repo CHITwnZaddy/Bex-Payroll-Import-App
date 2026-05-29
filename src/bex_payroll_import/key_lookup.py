@@ -55,10 +55,11 @@ def load_employee_lookup(template_path: Path) -> EmployeeLookup:
             code = cell_value(row, code_col)
             first_name = cell_value(row, first_col)
             last_name = cell_value(row, last_col)
-            if code and first_name and last_name:
-                code_by_name[(normalize_name(first_name), normalize_name(last_name))] = str(
-                    code
-                ).strip()
+            code_text = str(code).strip() if code is not None else ""
+            first_key = normalize_name(str(first_name)) if first_name is not None else ""
+            last_key = normalize_name(str(last_name)) if last_name is not None else ""
+            if code_text and first_key and last_key:
+                code_by_name[(first_key, last_key)] = code_text
         return EmployeeLookup(code_by_name)
     finally:
         workbook.close()
@@ -73,4 +74,4 @@ def find_first_header(header_map: dict[str, int], options: list[str]) -> int:
 
 
 def cell_value(row: tuple[object, ...], one_based_index: int) -> object:
-    return row[one_based_index - 1] if one_based_index <= len(row) else None
+    return row[one_based_index - 1] if 1 <= one_based_index <= len(row) else None
