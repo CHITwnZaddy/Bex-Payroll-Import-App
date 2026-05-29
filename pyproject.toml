@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bex-payroll-import"
+version = "0.1.0"
+description = "Windows desktop app for creating BEX Vista payroll import CSV files."
+requires-python = ">=3.10"
+dependencies = [
+  "openpyxl>=3.1.2",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+]
+windows = [
+  "pywin32>=306",
+  "pyinstaller>=6.0",
+]
+
+[project.scripts]
+bex-payroll-import = "bex_payroll_import.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
