@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from pathlib import Path
+import builtins
 import sys
 from types import ModuleType, SimpleNamespace
 
@@ -39,10 +42,17 @@ def test_export_pu_csv_with_excel_delegates_to_backend(tmp_path: Path) -> None:
 
 
 class FakeCsvWorkbook:
+    def __init__(self, *, fail_save_as: bool = False) -> None:
+        self.fail_save_as = fail_save_as
+        self.close_calls: list[bool] = []
+
     def SaveAs(self, _csv_path: str, FileFormat: int) -> None:
         assert FileFormat == 6
+        if self.fail_save_as:
+            raise RuntimeError("csv save failed")
 
     def Close(self, SaveChanges: bool) -> None:
+        self.close_calls.append(SaveChanges)
         assert SaveChanges is False
 
 
@@ -51,7 +61,7 @@ class FakeWorksheet:
         self.excel = excel
 
     def Copy(self) -> None:
-        self.excel.ActiveWorkbook = FakeCsvWorkbook()
+        self.excel.ActiveWorkbook = self.excel.csv_workbook
 
 
 class FakeWorkbook:
@@ -95,8 +105,10 @@ class FakeExcelApp:
         fail_save: bool = False,
         fail_close: bool = False,
         fail_quit: bool = False,
+        csv_workbook: FakeCsvWorkbook | None = None,
     ) -> None:
         self.ActiveWorkbook = None
+        self.csv_workbook = csv_workbook or FakeCsvWorkbook()
         self.workbook = FakeWorkbook(
             self,
             fail_save=fail_save,
@@ -162,3 +174,39 @@ def test_win32_backend_keeps_operation_failure_when_cleanup_also_fails(
 
     assert "save failed" in str(exc_info.value)
     assert "workbook close failed" not in str(exc_info.value)
+
+
+def test_win32_backend_closes_copied_workbook_when_save_as_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    csv_workbook = FakeCsvWorkbook(fail_save_as=True)
+    install_fake_win32com(monkeypatch, FakeExcelApp(csv_workbook=csv_workbook))
+
+    with pytest.raises(ExcelAutomationError) as exc_info:
+        Win32ExcelBackend().recalculate_and_export(
+            tmp_path / "audit.xlsx",
+            tmp_path / "PayrollImport.csv",
+        )
+
+    assert "csv save failed" in str(exc_info.value)
+    assert csv_workbook.close_calls == [False]
+
+
+def test_win32_backend_import_error_message(monkeypatch: pytest.MonkeyPatch) -> None:
+    original_import = builtins.__import__
+
+    def fake_import(name: str, *args: object, **kwargs: object) -> object:
+        if name == "win32com.client":
+            raise ImportError("missing win32com")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+
+    with pytest.raises(ExcelAutomationError) as exc_info:
+        Win32ExcelBackend().recalculate_and_export(
+            Path("audit.xlsx"),
+            Path("PayrollImport.csv"),
+        )
+
+    assert str(exc_info.value) == "pywin32 is required on Windows for Excel export."

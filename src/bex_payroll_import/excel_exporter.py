@@ -29,6 +29,7 @@ class Win32ExcelBackend:
 
         excel = None
         workbook = None
+        csv_workbook = None
         operation_error = None
         cleanup_error = None
         try:
@@ -43,9 +44,15 @@ class Win32ExcelBackend:
             csv_workbook = excel.ActiveWorkbook
             csv_workbook.SaveAs(str(csv_path), FileFormat=6)
             csv_workbook.Close(SaveChanges=False)
+            csv_workbook = None
         except Exception as exc:
             operation_error = exc
         finally:
+            if csv_workbook is not None:
+                try:
+                    csv_workbook.Close(SaveChanges=False)
+                except Exception as exc:
+                    cleanup_error = cleanup_error or exc
             if workbook is not None:
                 try:
                     workbook.Close(SaveChanges=True)
