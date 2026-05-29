@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Build output
+dist/
+build/
+*.spec
+
+# Local app state
+.env
+.env.*
+config.local.json
+*.log
+
+# Payroll source and generated files
+*.xlsx
+*.xls
+*.xlsm
+*.csv
+Payroll Import Outputs/
+outputs/
+
+# Keep documentation placeholders
+!sample_files/README.md
+
+# macOS and Windows
+.DS_Store
+Thumbs.db
