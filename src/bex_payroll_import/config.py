@@ -17,7 +17,12 @@ class AppConfig:
 def load_config(config_path: Path = APP_CONFIG_PATH) -> AppConfig:
     if not config_path.exists():
         return AppConfig(template_path=None)
-    data = json.loads(config_path.read_text(encoding="utf-8"))
+    try:
+        data = json.loads(config_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return AppConfig(template_path=None)
+    if not isinstance(data, dict):
+        return AppConfig(template_path=None)
     raw_template_path = data.get("template_path")
     return AppConfig(template_path=Path(raw_template_path) if raw_template_path else None)
 
