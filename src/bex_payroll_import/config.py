@@ -24,6 +24,10 @@ def load_config(config_path: Path = APP_CONFIG_PATH) -> AppConfig:
     if not isinstance(data, dict):
         return AppConfig(template_path=None)
     raw_template_path = data.get("template_path")
+    if raw_template_path is None:
+        return AppConfig(template_path=None)
+    if not isinstance(raw_template_path, str):
+        return AppConfig(template_path=None)
     return AppConfig(template_path=Path(raw_template_path) if raw_template_path else None)
 
 

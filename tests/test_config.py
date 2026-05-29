@@ -28,3 +28,17 @@ def test_load_unexpected_json_shape_returns_empty_config(tmp_path: Path) -> None
     config_path.write_text("[]", encoding="utf-8")
 
     assert load_config(config_path) == AppConfig(template_path=None)
+
+
+def test_load_int_template_path_returns_empty_config(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text('{"template_path": 123}', encoding="utf-8")
+
+    assert load_config(config_path) == AppConfig(template_path=None)
+
+
+def test_load_list_template_path_returns_empty_config(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text('{"template_path": ["bad"]}', encoding="utf-8")
+
+    assert load_config(config_path) == AppConfig(template_path=None)
