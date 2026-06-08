@@ -37,6 +37,20 @@ def make_template(path: Path) -> Path:
     return path
 
 
+def make_template_with_real_key_shape(path: Path) -> Path:
+    workbook = Workbook()
+    pu = workbook.active
+    pu.title = "PU"
+    key = workbook.create_sheet("Key")
+    key.append(["Code", "Dep", "Office", None, "Foreman", "Phase", "Category", None, "Code", "Name"])
+    key.append(["BAKKEN", "6", "N", None, "BAKKEN", 1, 1010, None, 48, "BAKKEN"])
+    tdr = workbook.create_sheet("TDR")
+    tdr.append(["Batch code", "EECode", "Lastname", "Firstname", "HomeDepartment", "Pay Class", "Badge", "Date", "Text to Col", "InPunchTime", "OutPunchTime", "Department", "EarnCode", "Hours", "Dollars", "Employee Approved", "Supervisor Approved", "Tax Profile", "Home Department Desc", "Dist Department Desc", "Job", "Employee code", "Phase", "Cost Code", "Cost type", "Home Department", "Department", "Phase Adj", "Phase", "Pay type"])
+    tdr.append(["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "=B2", "=W2", "", "=Y2", "", "=L2", "", "=W2", "=M2"])
+    workbook.save(path)
+    return path
+
+
 def make_template_without_tdr(path: Path) -> Path:
     workbook = Workbook()
     pu = workbook.active
@@ -93,6 +107,62 @@ def test_run_payroll_import_success_with_expenses(tmp_path: Path) -> None:
         assert tdr["N3"].value == 0
         assert tdr["O3"].value == 55
         assert tdr["Y3"].value == "L"
+    finally:
+        workbook.close()
+
+
+def test_run_payroll_import_uses_tdr_employee_codes_for_expenses(tmp_path: Path) -> None:
+    template_path = make_template_with_real_key_shape(tmp_path / "template.xlsx")
+    source_dir = tmp_path / "source"
+    source_dir.mkdir()
+    tdr_path = save_workbook(
+        source_dir / "tdr.xlsx",
+        "Time Detail Repor",
+        [
+            [
+                "EECode",
+                "Lastname",
+                "Firstname",
+                "HomeDepartment",
+                "Pay Class",
+                "Badge",
+                "InPunchTime",
+                "OutPunchTime",
+                "Department",
+                "EarnCode",
+                "EarnHours",
+                "Dollars",
+            ],
+            ["0048", "BAKER", "KENNETH", "200", "SAL", "0049", "2026-04-13 12:00 AM", "2026-04-13 12:00 AM", "9 Mile improvements", "R", 8, 0],
+            ["1009", "LUMLEY", "MICHAEL", "200", "SAL", "1010", "2026-04-13 12:00 AM", "2026-04-13 12:00 AM", "9 Mile improvements", "R", 8, 0],
+        ],
+    )
+    expense_path = save_workbook(
+        source_dir / "expense.xlsx",
+        "Expense Transacti",
+        [
+            ["Employee", "Expense Date", "Paid Amount"],
+            ["LUMLEY, MICHAEL", "04/13/2026", 97.14],
+            ["BAKER, KENNETH", "04/17/2026", 41.61],
+        ],
+    )
+
+    outputs = run_payroll_import(
+        RunInputs(template_path=template_path, tdr_path=tdr_path, expense_path=expense_path, expense_skipped=False),
+        now=datetime(2026, 5, 29, 14, 37, 8),
+        excel_backend=FakeExcelBackend(),
+    )
+
+    assert outputs.payroll_csv_path is not None
+    workbook = load_workbook(outputs.audit_workbook_path, data_only=False)
+    try:
+        tdr = workbook["TDR"]
+        assert tdr["B4"].value == "1009"
+        assert tdr["M4"].value == "EXP REIM"
+        assert tdr["O4"].value == 97.14
+        assert tdr["B5"].value == "0048"
+        assert tdr["M5"].value == "EXP REIM"
+        assert tdr["O5"].value == 41.61
     finally:
         workbook.close()
 

@@ -5,9 +5,12 @@ from pathlib import Path
 
 from bex_payroll_import.batch import build_batch_code
 from bex_payroll_import.excel_exporter import ExcelBackend, export_pu_csv_with_excel
-from bex_payroll_import.key_lookup import load_employee_lookup
 from bex_payroll_import.models import NormalizedPayrollRow, RunInputs, RunOutputs
-from bex_payroll_import.normalizers import normalize_expense_file, normalize_tdr_file
+from bex_payroll_import.normalizers import (
+    load_employee_lookup_from_tdr,
+    normalize_expense_file,
+    normalize_tdr_file,
+)
 from bex_payroll_import.paths import PlannedOutputPaths, build_output_paths
 from bex_payroll_import.template_writer import copy_template_to_audit, write_tdr_rows
 from bex_payroll_import.validation import ValidationReport, validate_final_csv, write_validation_csv
@@ -133,7 +136,7 @@ def normalize_source_rows(
         return rows
 
     try:
-        lookup = load_employee_lookup(inputs.template_path)
+        lookup = load_employee_lookup_from_tdr(inputs.tdr_path)
         rows.extend(normalize_expense_file(inputs.expense_path, lookup, batch_code))
     except Exception as exc:
         report.add_error(str(exc), SOURCE_FIX, source=SOURCE_EXPENSE)

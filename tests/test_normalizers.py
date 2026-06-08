@@ -5,7 +5,11 @@ from pathlib import Path
 import pytest
 
 from bex_payroll_import.key_lookup import EmployeeLookup
-from bex_payroll_import.normalizers import normalize_expense_file, normalize_tdr_file
+from bex_payroll_import.normalizers import (
+    load_employee_lookup_from_tdr,
+    normalize_expense_file,
+    normalize_tdr_file,
+)
 from tests.helpers import save_workbook
 
 
@@ -60,6 +64,66 @@ def test_normalize_tdr_file_reads_required_values(tmp_path: Path) -> None:
     assert rows[0].employee_code == "E100"
     assert rows[0].hours == Decimal("8")
     assert rows[0].work_date == date(2026, 4, 12)
+
+
+def test_normalize_tdr_file_uses_in_punch_time_when_date_column_missing(tmp_path: Path) -> None:
+    path = save_workbook(
+        tmp_path / "tdr.xlsx",
+        "Time Detail Repor",
+        [
+            [
+                "EECode",
+                "Lastname",
+                "Firstname",
+                "HomeDepartment",
+                "Pay Class",
+                "Badge",
+                "InPunchTime",
+                "OutPunchTime",
+                "Department",
+                "EarnCode",
+                "EarnHours",
+                "Dollars",
+            ],
+            [
+                "0048",
+                "BAKER",
+                "KENNETH",
+                "200",
+                "SAL",
+                "0049",
+                "2026-04-13 12:00 AM",
+                "2026-04-13 12:00 AM",
+                "9 Mile improvements",
+                "R",
+                8,
+                0,
+            ],
+        ],
+    )
+
+    rows = normalize_tdr_file(path, "CD0529143708")
+
+    assert len(rows) == 1
+    assert rows[0].employee_code == "0048"
+    assert rows[0].work_date == date(2026, 4, 13)
+
+
+def test_load_employee_lookup_from_tdr_maps_expense_names_to_codes(tmp_path: Path) -> None:
+    path = save_workbook(
+        tmp_path / "tdr.xlsx",
+        "Time Detail Repor",
+        [
+            ["EECode", "Lastname", "Firstname", "InPunchTime", "Department", "EarnCode", "EarnHours"],
+            ["0048", "BAKER", "KENNETH", "2026-04-13 12:00 AM", "9 Mile improvements", "R", 8],
+            ["1009", "LUMLEY", "MICHAEL", "2026-04-13 12:00 AM", "9 Mile improvements", "R", 8],
+        ],
+    )
+
+    lookup = load_employee_lookup_from_tdr(path)
+
+    assert lookup.resolve_code("Kenneth", "Baker") == "0048"
+    assert lookup.resolve_code("Michael", "Lumley") == "1009"
 
 
 def test_normalize_expense_file_applies_defaults(tmp_path: Path) -> None:
