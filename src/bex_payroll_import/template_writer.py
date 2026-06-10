@@ -57,7 +57,7 @@ def capture_formula_cells(sheet, data_start_row: int) -> dict[int, tuple[str, st
 
 def write_tdr_source_cells(sheet, row_number: int, payroll_row: NormalizedPayrollRow) -> None:
     sheet.cell(row=row_number, column=1).value = payroll_row.batch_code
-    sheet.cell(row=row_number, column=2).value = payroll_row.employee_code
+    sheet.cell(row=row_number, column=2).value = excel_lookup_code(payroll_row.employee_code)
     sheet.cell(row=row_number, column=8).value = payroll_row.work_date
     sheet.cell(row=row_number, column=12).value = payroll_row.department
     sheet.cell(row=row_number, column=13).value = payroll_row.pay_type
@@ -82,3 +82,10 @@ def copy_formula_cells(
             formula,
             origin=origin,
         ).translate_formula(target_cell.coordinate)
+
+
+def excel_lookup_code(value: str) -> str | int:
+    text = value.strip()
+    if text.isdigit():
+        return int(text)
+    return text

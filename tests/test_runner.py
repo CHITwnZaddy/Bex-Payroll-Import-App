@@ -157,10 +157,10 @@ def test_run_payroll_import_uses_tdr_employee_codes_for_expenses(tmp_path: Path)
     workbook = load_workbook(outputs.audit_workbook_path, data_only=False)
     try:
         tdr = workbook["TDR"]
-        assert tdr["B4"].value == "1009"
+        assert tdr["B4"].value == 1009
         assert tdr["M4"].value == "EXP REIM"
         assert tdr["O4"].value == 97.14
-        assert tdr["B5"].value == "0048"
+        assert tdr["B5"].value == 48
         assert tdr["M5"].value == "EXP REIM"
         assert tdr["O5"].value == 41.61
     finally:

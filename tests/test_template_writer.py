@@ -77,6 +77,17 @@ def test_write_tdr_rows_adds_rows_and_copies_formula_columns(tmp_path: Path) -> 
     assert sheet["V3"].value == "=B3"
 
 
+def test_write_tdr_rows_writes_numeric_employee_codes_for_excel_lookup(tmp_path: Path) -> None:
+    audit_path = tmp_path / "audit.xlsx"
+    make_template(audit_path)
+
+    write_tdr_rows(audit_path, [make_payroll_row("0048")])
+
+    workbook = load_workbook(audit_path, data_only=False)
+    sheet = workbook["TDR"]
+    assert sheet["B2"].value == 48
+
+
 def test_write_tdr_rows_clears_stale_rows_below_current_import(tmp_path: Path) -> None:
     audit_path = tmp_path / "audit.xlsx"
     make_template(audit_path)
