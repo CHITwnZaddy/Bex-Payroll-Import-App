@@ -23,7 +23,8 @@ class FakeExcelBackend:
         self.calls.append((workbook_path, csv_path))
         assert csv_path.parent.exists()
         csv_path.write_text(
-            "CD0529143708,E100,DLPTO,REG,8,100,200,L,04/12/2026,0\n",
+            "Batch code,Employee code,Department,Pay type,Hours\n"
+            "CD0529143708,E100,DLPTO,REG,8\n",
             encoding="utf-8",
         )
 
@@ -39,6 +40,7 @@ def test_export_pu_csv_with_excel_delegates_to_backend(tmp_path: Path) -> None:
     assert result == ExcelExportResult(csv_path=csv_path)
     assert backend.calls == [(workbook_path, csv_path)]
     assert csv_path.exists()
+    assert csv_path.read_text(encoding="utf-8") == "CD0529143708,E100,DLPTO,REG,8\n"
 
 
 class FakeCsvWorkbook:

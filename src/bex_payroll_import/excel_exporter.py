@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -82,4 +83,20 @@ def export_pu_csv_with_excel(
     selected_backend = backend or Win32ExcelBackend()
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     selected_backend.recalculate_and_export(workbook_path, csv_path)
+    remove_pu_header_row(csv_path)
     return ExcelExportResult(csv_path=csv_path)
+
+
+def remove_pu_header_row(csv_path: Path) -> None:
+    with csv_path.open(newline="", encoding="utf-8") as csv_file:
+        rows = list(csv.reader(csv_file))
+    if not rows:
+        return
+
+    first_cells = [cell.strip().lower() for cell in rows[0]]
+    if "batch code" not in first_cells and "employee code" not in first_cells:
+        return
+
+    with csv_path.open("w", newline="", encoding="utf-8") as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerows(rows[1:])
