@@ -37,7 +37,7 @@ def make_template(path: Path) -> Path:
     tdr = workbook.create_sheet("TDR")
     workbook.create_sheet("Key")
     tdr.append(["Batch code", "EECode", "Lastname", "Firstname", "HomeDepartment", "Pay Class", "Badge", "Date", "Text to Col", "InPunchTime", "OutPunchTime", "Department", "EarnCode", "Hours", "Dollars", "Employee Approved", "Supervisor Approved", "Tax Profile", "Home Department Desc", "Dist Department Desc", "Job", "Employee code", "Phase", "Cost Code", "Cost type", "Home Department", "Department", "Phase Adj", "Phase", "Pay type"])
-    tdr.append(["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "=B2", "=W2", "", "=Y2", "", "=L2", "", "=W2", "=M2"])
+    tdr.append(["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "=B2", "=W2", "", "=Y2", "", "=L2", "", "=W2", '=IFERROR(VLOOKUP(M2,Key!$M$25:$N$33,2,FALSE),"NL")'])
     workbook.save(path)
     return path
 
@@ -135,7 +135,18 @@ def test_write_tdr_rows_translates_all_formula_columns(tmp_path: Path) -> None:
     sheet = workbook["TDR"]
     assert sheet["AA3"].value == "=L3"
     assert sheet["AC3"].value == "=W3"
-    assert sheet["AD3"].value == "=M3"
+    assert sheet["AD3"].value == '=IFERROR(VLOOKUP(M3,Key!$M$20:$N$33,2,FALSE),"NL")'
+
+
+def test_write_tdr_rows_extends_pay_type_lookup_range_for_earn_code_5(tmp_path: Path) -> None:
+    audit_path = tmp_path / "audit.xlsx"
+    make_template(audit_path)
+
+    write_tdr_rows(audit_path, [make_payroll_row()])
+
+    workbook = load_workbook(audit_path, data_only=False)
+    sheet = workbook["TDR"]
+    assert sheet["AD2"].value == '=IFERROR(VLOOKUP(M2,Key!$M$20:$N$33,2,FALSE),"NL")'
 
 
 def test_write_tdr_rows_requires_tdr_sheet(tmp_path: Path) -> None:

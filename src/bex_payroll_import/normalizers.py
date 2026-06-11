@@ -30,12 +30,14 @@ def normalize_tdr_file(tdr_path: Path, batch_code: str) -> list[NormalizedPayrol
             employee_code = text_value(row, header_row.header_map, "EECode")
             if not employee_code:
                 continue
+            department = text_value(row, header_row.header_map, "Department")
+            earn_code = text_value(row, header_row.header_map, "EarnCode")
             rows.append(
                 NormalizedPayrollRow(
                     batch_code=batch_code,
                     employee_code=employee_code,
-                    department=text_value(row, header_row.header_map, "Department"),
-                    pay_type=text_value(row, header_row.header_map, "EarnCode"),
+                    department=department,
+                    pay_type=effective_tdr_earn_code(department, earn_code),
                     hours=decimal_value(cell(row, header_row.header_map, "EarnHours")),
                     job=text_value_from_first_available(row, header_row.header_map, TDR_JOB_COLUMNS),
                     phase=text_value(row, header_row.header_map, "Phase"),
@@ -193,3 +195,11 @@ def date_value_or_default(value: object, default: date) -> date:
 
 def normalize_lookup_name(value: str) -> str:
     return " ".join(value.strip().lower().split())
+
+
+def effective_tdr_earn_code(department: str, earn_code: str) -> str:
+    normalized_department = department.strip().upper()
+    normalized_earn_code = earn_code.strip().upper()
+    if normalized_department == "DLPTO" or normalized_earn_code not in {"R", "O"}:
+        return "5"
+    return earn_code

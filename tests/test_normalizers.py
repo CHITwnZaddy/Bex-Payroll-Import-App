@@ -134,6 +134,38 @@ def test_normalize_tdr_file_uses_distributed_department_code_for_job(tmp_path: P
     assert rows[0].job == "25012"
 
 
+def test_normalize_tdr_file_forces_dlpto_department_to_earn_code_5(tmp_path: Path) -> None:
+    path = save_workbook(
+        tmp_path / "tdr.xlsx",
+        "Time Detail Repor",
+        [
+            ["EECode", "Lastname", "Firstname", "Date", "Department", "EarnCode", "EarnHours"],
+            ["E100", "Doe", "Jane", date(2026, 4, 12), "DLPTO", "R", 8],
+        ],
+    )
+
+    rows = normalize_tdr_file(path, "CD0529143708")
+
+    assert len(rows) == 1
+    assert rows[0].pay_type == "5"
+
+
+def test_normalize_tdr_file_forces_non_regular_rows_to_earn_code_5(tmp_path: Path) -> None:
+    path = save_workbook(
+        tmp_path / "tdr.xlsx",
+        "Time Detail Repor",
+        [
+            ["EECode", "Lastname", "Firstname", "Date", "Department", "EarnCode", "EarnHours"],
+            ["E100", "Doe", "Jane", date(2026, 4, 12), "Office Staff", "H", 8],
+        ],
+    )
+
+    rows = normalize_tdr_file(path, "CD0529143708")
+
+    assert len(rows) == 1
+    assert rows[0].pay_type == "5"
+
+
 def test_load_employee_lookup_from_tdr_maps_expense_names_to_codes(tmp_path: Path) -> None:
     path = save_workbook(
         tmp_path / "tdr.xlsx",

@@ -76,7 +76,7 @@ def copy_formula_cells(
     for column, (formula, origin) in formula_cells.items():
         target_cell = sheet.cell(row=target_row, column=column)
         target_cell.value = Translator(
-            formula,
+            extend_pay_type_lookup_range(formula),
             origin=origin,
         ).translate_formula(target_cell.coordinate)
 
@@ -86,3 +86,7 @@ def excel_lookup_code(value: str) -> str | int:
     if text.isdigit():
         return int(text)
     return text
+
+
+def extend_pay_type_lookup_range(formula: str) -> str:
+    return formula.replace("Key!$M$25:$N$33", "Key!$M$20:$N$33")
