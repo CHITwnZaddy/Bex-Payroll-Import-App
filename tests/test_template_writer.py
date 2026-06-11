@@ -88,6 +88,32 @@ def test_write_tdr_rows_writes_numeric_employee_codes_for_excel_lookup(tmp_path:
     assert sheet["B2"].value == 48
 
 
+def test_write_tdr_rows_writes_numeric_earn_code_for_excel_lookup(tmp_path: Path) -> None:
+    audit_path = tmp_path / "audit.xlsx"
+    make_template(audit_path)
+    payroll_row = make_payroll_row()
+    payroll_row = NormalizedPayrollRow(
+        payroll_row.batch_code,
+        payroll_row.employee_code,
+        "DLPTO",
+        "5",
+        payroll_row.hours,
+        payroll_row.job,
+        payroll_row.phase,
+        payroll_row.cost_type,
+        payroll_row.work_date,
+        payroll_row.dollars,
+        payroll_row.source,
+        payroll_row.source_row_number,
+    )
+
+    write_tdr_rows(audit_path, [payroll_row])
+
+    workbook = load_workbook(audit_path, data_only=False)
+    sheet = workbook["TDR"]
+    assert sheet["M2"].value == 5
+
+
 def test_write_tdr_rows_clears_stale_rows_below_current_import(tmp_path: Path) -> None:
     audit_path = tmp_path / "audit.xlsx"
     make_template(audit_path)

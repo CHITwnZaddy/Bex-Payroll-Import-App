@@ -60,7 +60,7 @@ def write_tdr_source_cells(sheet, row_number: int, payroll_row: NormalizedPayrol
     sheet.cell(row=row_number, column=2).value = excel_lookup_code(payroll_row.employee_code)
     sheet.cell(row=row_number, column=8).value = payroll_row.work_date
     sheet.cell(row=row_number, column=12).value = payroll_row.department
-    sheet.cell(row=row_number, column=13).value = payroll_row.pay_type
+    sheet.cell(row=row_number, column=13).value = excel_lookup_code(payroll_row.pay_type)
     sheet.cell(row=row_number, column=14).value = float(payroll_row.hours)
     sheet.cell(row=row_number, column=15).value = float(payroll_row.dollars or 0)
     sheet.cell(row=row_number, column=21).value = payroll_row.job
