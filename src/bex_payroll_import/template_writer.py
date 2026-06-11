@@ -36,7 +36,7 @@ def write_tdr_rows(audit_workbook_path: Path, rows: list[NormalizedPayrollRow]) 
 
 
 def clear_existing_tdr_rows(sheet, data_start_row: int) -> None:
-    clear_columns = [*range(1, 16), *range(21, 31)]
+    clear_columns = range(1, sheet.max_column + 1)
     for row in range(data_start_row, sheet.max_row + 1):
         for column in clear_columns:
             sheet.cell(row=row, column=column).value = None
@@ -45,7 +45,7 @@ def clear_existing_tdr_rows(sheet, data_start_row: int) -> None:
 def capture_formula_cells(sheet, data_start_row: int) -> dict[int, tuple[str, str]]:
     for row in range(data_start_row, sheet.max_row + 1):
         formula_cells = {}
-        for column in range(22, 31):
+        for column in range(1, sheet.max_column + 1):
             cell = sheet.cell(row=row, column=column)
             value = cell.value
             if isinstance(value, str) and value.startswith("="):
@@ -73,10 +73,7 @@ def copy_formula_cells(
     formula_cells: dict[int, tuple[str, str]],
     target_row: int,
 ) -> None:
-    source_value_columns = {23, 25}
     for column, (formula, origin) in formula_cells.items():
-        if column in source_value_columns:
-            continue
         target_cell = sheet.cell(row=target_row, column=column)
         target_cell.value = Translator(
             formula,

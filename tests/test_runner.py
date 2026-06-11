@@ -106,7 +106,7 @@ def test_run_payroll_import_success_with_expenses(tmp_path: Path) -> None:
         assert tdr["M3"].value == "EXP REIM"
         assert tdr["N3"].value == 0
         assert tdr["O3"].value == 55
-        assert tdr["Y3"].value == "L"
+        assert tdr["Y3"].value == "=Y3"
     finally:
         workbook.close()
 

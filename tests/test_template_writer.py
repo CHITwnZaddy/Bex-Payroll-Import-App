@@ -105,7 +105,7 @@ def test_write_tdr_rows_clears_stale_rows_below_current_import(tmp_path: Path) -
     assert [sheet.cell(row=3, column=column).value for column in stale_columns] == [None] * len(stale_columns)
 
 
-def test_write_tdr_rows_preserves_source_values_for_u_w_y(tmp_path: Path) -> None:
+def test_write_tdr_rows_preserves_job_and_copies_phase_formula_columns(tmp_path: Path) -> None:
     audit_path = tmp_path / "audit.xlsx"
     make_template(audit_path)
     rows = [
@@ -118,11 +118,11 @@ def test_write_tdr_rows_preserves_source_values_for_u_w_y(tmp_path: Path) -> Non
     workbook = load_workbook(audit_path, data_only=False)
     sheet = workbook["TDR"]
     assert sheet["U2"].value == "100"
-    assert sheet["W2"].value == "200"
-    assert sheet["Y2"].value == "L"
+    assert sheet["W2"].value == "=W2"
+    assert sheet["Y2"].value == "=Y2"
     assert sheet["U3"].value == "300"
-    assert sheet["W3"].value == "400"
-    assert sheet["Y3"].value == "M"
+    assert sheet["W3"].value == "=W3"
+    assert sheet["Y3"].value == "=Y3"
 
 
 def test_write_tdr_rows_translates_all_formula_columns(tmp_path: Path) -> None:

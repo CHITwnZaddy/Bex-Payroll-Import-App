@@ -13,6 +13,7 @@ from bex_payroll_import.spreadsheet_io import find_header_row, normalize_header
 
 TDR_REQUIRED_COLUMNS = ["EECode", "Lastname", "Firstname", "Department", "EarnCode", "EarnHours"]
 TDR_DATE_COLUMNS = ["Date", "InPunchTime", "OutPunchTime"]
+TDR_JOB_COLUMNS = ["Job", "Distributed Department Code"]
 EXPENSE_REQUIRED_COLUMNS = ["Employee", "Check Date", "Paid Amount"]
 
 
@@ -36,7 +37,7 @@ def normalize_tdr_file(tdr_path: Path, batch_code: str) -> list[NormalizedPayrol
                     department=text_value(row, header_row.header_map, "Department"),
                     pay_type=text_value(row, header_row.header_map, "EarnCode"),
                     hours=decimal_value(cell(row, header_row.header_map, "EarnHours")),
-                    job=text_value(row, header_row.header_map, "Job"),
+                    job=text_value_from_first_available(row, header_row.header_map, TDR_JOB_COLUMNS),
                     phase=text_value(row, header_row.header_map, "Phase"),
                     cost_type=text_value(row, header_row.header_map, "Cost Type"),
                     work_date=date_value(first_available_cell(row, header_row.header_map, TDR_DATE_COLUMNS)),
@@ -137,6 +138,11 @@ def first_available_cell(row: tuple[object, ...], header_map: dict[str, int], co
         if value is not None and str(value).strip():
             return value
     return None
+
+
+def text_value_from_first_available(row: tuple[object, ...], header_map: dict[str, int], column_names: list[str]) -> str:
+    value = first_available_cell(row, header_map, column_names)
+    return "" if value is None else str(value).strip()
 
 
 def text_value(row: tuple[object, ...], header_map: dict[str, int], column_name: str) -> str:

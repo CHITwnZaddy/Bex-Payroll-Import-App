@@ -109,6 +109,31 @@ def test_normalize_tdr_file_uses_in_punch_time_when_date_column_missing(tmp_path
     assert rows[0].work_date == date(2026, 4, 13)
 
 
+def test_normalize_tdr_file_uses_distributed_department_code_for_job(tmp_path: Path) -> None:
+    path = save_workbook(
+        tmp_path / "tdr.xlsx",
+        "Time Detail Repor",
+        [
+            [
+                "EECode",
+                "Lastname",
+                "Firstname",
+                "InPunchTime",
+                "Department",
+                "EarnCode",
+                "EarnHours",
+                "Distributed Department Code",
+            ],
+            ["0048", "BAKER", "KENNETH", "2026-04-13 12:00 AM", "9 Mile improvements", "R", 8, "25012"],
+        ],
+    )
+
+    rows = normalize_tdr_file(path, "CD0529143708")
+
+    assert len(rows) == 1
+    assert rows[0].job == "25012"
+
+
 def test_load_employee_lookup_from_tdr_maps_expense_names_to_codes(tmp_path: Path) -> None:
     path = save_workbook(
         tmp_path / "tdr.xlsx",
