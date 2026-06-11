@@ -131,13 +131,13 @@ def test_normalize_expense_file_applies_defaults(tmp_path: Path) -> None:
         tmp_path / "expense.xlsx",
         "Expense Transacti",
         [
-            ["Employee", "Expense Date", "Paid Amount"],
+            ["Employee", "Check Date", "Paid Amount"],
             ["DOE, JANE", datetime(2026, 4, 15, 8, 30), 123.45],
         ],
     )
     lookup = EmployeeLookup({("jane", "doe"): "E100"})
 
-    rows = normalize_expense_file(path, lookup, "CD0529143708")
+    rows = normalize_expense_file(path, lookup, "CD0529143708", date(2026, 5, 29))
 
     assert len(rows) == 1
     assert rows[0].employee_code == "E100"
@@ -147,7 +147,25 @@ def test_normalize_expense_file_applies_defaults(tmp_path: Path) -> None:
     assert rows[0].job == ""
     assert rows[0].phase == ""
     assert rows[0].cost_type == "L"
+    assert rows[0].work_date == date(2026, 4, 15)
     assert rows[0].dollars == Decimal("123.45")
+
+
+def test_normalize_expense_file_defaults_blank_check_date_to_run_date(tmp_path: Path) -> None:
+    path = save_workbook(
+        tmp_path / "expense.xlsx",
+        "Expense Transacti",
+        [
+            ["Employee", "Check Date", "Paid Amount"],
+            ["DOE, JANE", "   ", 123.45],
+        ],
+    )
+    lookup = EmployeeLookup({("jane", "doe"): "E100"})
+
+    rows = normalize_expense_file(path, lookup, "CD0529143708", date(2026, 5, 29))
+
+    assert len(rows) == 1
+    assert rows[0].work_date == date(2026, 5, 29)
 
 
 def test_normalize_expense_file_treats_whitespace_paid_amount_as_zero(tmp_path: Path) -> None:
@@ -155,13 +173,13 @@ def test_normalize_expense_file_treats_whitespace_paid_amount_as_zero(tmp_path: 
         tmp_path / "expense.xlsx",
         "Expense Transacti",
         [
-            ["Employee", "Expense Date", "Paid Amount"],
+            ["Employee", "Check Date", "Paid Amount"],
             ["DOE, JANE", date(2026, 4, 15), "   "],
         ],
     )
     lookup = EmployeeLookup({("jane", "doe"): "E100"})
 
-    rows = normalize_expense_file(path, lookup, "CD0529143708")
+    rows = normalize_expense_file(path, lookup, "CD0529143708", date(2026, 5, 29))
 
     assert len(rows) == 1
     assert rows[0].dollars == Decimal("0")
@@ -172,14 +190,14 @@ def test_normalize_expense_file_skips_whitespace_only_employee_rows(tmp_path: Pa
         tmp_path / "expense.xlsx",
         "Expense Transacti",
         [
-            ["Employee", "Expense Date", "Paid Amount"],
+            ["Employee", "Check Date", "Paid Amount"],
             ["   ", date(2026, 4, 15), 50],
             ["DOE, JANE", date(2026, 4, 16), 75],
         ],
     )
     lookup = EmployeeLookup({("jane", "doe"): "E100"})
 
-    rows = normalize_expense_file(path, lookup, "CD0529143708")
+    rows = normalize_expense_file(path, lookup, "CD0529143708", date(2026, 5, 29))
 
     assert len(rows) == 1
     assert rows[0].employee_code == "E100"
@@ -222,9 +240,9 @@ def test_normalize_expense_file_raises_for_unmatched_employee(tmp_path: Path) ->
     path = save_workbook(
         tmp_path / "expense.xlsx",
         "Expense Transacti",
-        [["Employee", "Expense Date", "Paid Amount"], ["DOE, JOHN", date(2026, 4, 15), 50]],
+        [["Employee", "Check Date", "Paid Amount"], ["DOE, JOHN", date(2026, 4, 15), 50]],
     )
     lookup = EmployeeLookup({("jane", "doe"): "E100"})
 
     with pytest.raises(KeyError, match="No employee code found"):
-        normalize_expense_file(path, lookup, "CD0529143708")
+        normalize_expense_file(path, lookup, "CD0529143708", date(2026, 5, 29))

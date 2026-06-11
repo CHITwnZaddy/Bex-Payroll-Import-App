@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 from bex_payroll_import.batch import build_batch_code
@@ -53,7 +53,7 @@ def run_payroll_import(
         )
         return validation_error_outputs(batch_code, paths, report)
 
-    payroll_rows = normalize_source_rows(inputs, batch_code, report)
+    payroll_rows = normalize_source_rows(inputs, batch_code, report, run_now.date())
     if not payroll_rows and not report.has_errors:
         report.add_error(
             "Selected source file has no usable data rows.",
@@ -119,6 +119,7 @@ def normalize_source_rows(
     inputs: RunInputs,
     batch_code: str,
     report: ValidationReport,
+    default_expense_check_date: date,
 ) -> list[NormalizedPayrollRow]:
     rows: list[NormalizedPayrollRow] = []
 
@@ -137,7 +138,7 @@ def normalize_source_rows(
 
     try:
         lookup = load_employee_lookup_from_tdr(inputs.tdr_path)
-        rows.extend(normalize_expense_file(inputs.expense_path, lookup, batch_code))
+        rows.extend(normalize_expense_file(inputs.expense_path, lookup, batch_code, default_expense_check_date))
     except Exception as exc:
         report.add_error(str(exc), SOURCE_FIX, source=SOURCE_EXPENSE)
 

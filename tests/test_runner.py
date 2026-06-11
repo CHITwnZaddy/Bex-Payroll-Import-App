@@ -82,7 +82,7 @@ def test_run_payroll_import_success_with_expenses(tmp_path: Path) -> None:
     expense_path = save_workbook(
         source_dir / "expense.xlsx",
         "Expense Transacti",
-        [["Employee", "Expense Date", "Paid Amount"], ["DOE, JANE", "04/15/2026", 55]],
+        [["Employee", "Check Date", "Paid Amount"], ["DOE, JANE", "04/15/2026", 55]],
     )
 
     outputs = run_payroll_import(
@@ -141,7 +141,7 @@ def test_run_payroll_import_uses_tdr_employee_codes_for_expenses(tmp_path: Path)
         source_dir / "expense.xlsx",
         "Expense Transacti",
         [
-            ["Employee", "Expense Date", "Paid Amount"],
+            ["Employee", "Check Date", "Paid Amount"],
             ["LUMLEY, MICHAEL", "04/13/2026", 97.14],
             ["BAKER, KENNETH", "04/17/2026", 41.61],
         ],

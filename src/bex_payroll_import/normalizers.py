@@ -13,7 +13,7 @@ from bex_payroll_import.spreadsheet_io import find_header_row, normalize_header
 
 TDR_REQUIRED_COLUMNS = ["EECode", "Lastname", "Firstname", "Department", "EarnCode", "EarnHours"]
 TDR_DATE_COLUMNS = ["Date", "InPunchTime", "OutPunchTime"]
-EXPENSE_REQUIRED_COLUMNS = ["Employee", "Expense Date", "Paid Amount"]
+EXPENSE_REQUIRED_COLUMNS = ["Employee", "Check Date", "Paid Amount"]
 
 
 def normalize_tdr_file(tdr_path: Path, batch_code: str) -> list[NormalizedPayrollRow]:
@@ -78,6 +78,7 @@ def normalize_expense_file(
     expense_path: Path,
     lookup: EmployeeLookup,
     batch_code: str,
+    default_check_date: date,
 ) -> list[NormalizedPayrollRow]:
     header_row = find_header_row(expense_path, EXPENSE_REQUIRED_COLUMNS)
     workbook = load_workbook(expense_path, read_only=True, data_only=True)
@@ -102,7 +103,10 @@ def normalize_expense_file(
                     job="",
                     phase="",
                     cost_type="L",
-                    work_date=date_value(cell(row, header_row.header_map, "Expense Date")),
+                    work_date=date_value_or_default(
+                        cell(row, header_row.header_map, "Check Date"),
+                        default_check_date,
+                    ),
                     dollars=decimal_value(cell(row, header_row.header_map, "Paid Amount")),
                     source="Expense Transaction",
                     source_row_number=row_number,
@@ -171,6 +175,14 @@ def date_value(value: object) -> date:
             except ValueError:
                 pass
     raise ValueError(f"Expected date value, got {value!r}")
+
+
+def date_value_or_default(value: object, default: date) -> date:
+    if value is None:
+        return default
+    if isinstance(value, str) and not value.strip():
+        return default
+    return date_value(value)
 
 
 def normalize_lookup_name(value: str) -> str:
