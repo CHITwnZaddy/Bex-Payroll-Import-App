@@ -29,6 +29,21 @@ class FakeExcelBackend:
         )
 
 
+class WideExcelBackend:
+    def recalculate_and_export(self, workbook_path: Path, csv_path: Path) -> None:
+        rows = [
+            ["Batch code", "Employee code", "Department", "Pay type", "Hours", "Job", "Phase", "Cost type", "Date"] + [""] * 34,
+            ["OLD", "E100", "6", "R", "8", "25009", "011010", "L", "4/12/2026"] + [""] * 34,
+            ["OLD", "E101", "1", "R", "8", "", "", "", "4/12/2026"] + [""] * 34,
+            ["OLD"] + [""] * 42,
+        ]
+        csv_path.parent.mkdir(parents=True, exist_ok=True)
+        with csv_path.open("w", newline="", encoding="utf-8") as csv_file:
+            import csv
+
+            csv.writer(csv_file).writerows(rows)
+
+
 def test_export_pu_csv_with_excel_delegates_to_backend(tmp_path: Path) -> None:
     backend = FakeExcelBackend()
     workbook_path = tmp_path / "audit.xlsx"
@@ -40,7 +55,35 @@ def test_export_pu_csv_with_excel_delegates_to_backend(tmp_path: Path) -> None:
     assert result == ExcelExportResult(csv_path=csv_path)
     assert backend.calls == [(workbook_path, csv_path)]
     assert csv_path.exists()
-    assert csv_path.read_text(encoding="utf-8") == "CD0529143708,E100,DLPTO,REG,8\n"
+    import csv
+
+    with csv_path.open(newline="", encoding="utf-8") as csv_file:
+        rows = list(csv.reader(csv_file))
+    assert len(rows) == 1
+    assert len(rows[0]) == 22
+    assert rows[0][:5] == ["CD0529143708", "E100", "DLPTO", "REG", "8"]
+
+
+def test_export_pu_csv_writes_only_employee_rows_and_exactly_22_columns(tmp_path: Path) -> None:
+    workbook_path = tmp_path / "audit.xlsx"
+    workbook_path.write_text("fake", encoding="utf-8")
+    csv_path = tmp_path / "PayrollImport.csv"
+
+    export_pu_csv_with_excel(
+        workbook_path,
+        csv_path,
+        backend=WideExcelBackend(),
+        batch_code="CD0529143708",
+    )
+
+    import csv
+
+    with csv_path.open(newline="", encoding="utf-8") as csv_file:
+        rows = list(csv.reader(csv_file))
+    assert len(rows) == 2
+    assert {len(row) for row in rows} == {22}
+    assert [row[0] for row in rows] == ["CD0529143708", "CD0529143708"]
+    assert [row[1] for row in rows] == ["E100", "E101"]
 
 
 class FakeCsvWorkbook:

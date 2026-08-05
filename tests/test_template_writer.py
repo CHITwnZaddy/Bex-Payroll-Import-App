@@ -34,10 +34,34 @@ def make_template(path: Path) -> Path:
     workbook = Workbook()
     pu = workbook.active
     pu.title = "PU"
+    pu.append(["Batch code", "Employee code"])
+    for row_number in range(2, 12):
+        pu.cell(row=row_number, column=2).value = f"=TDR!V{row_number}"
     tdr = workbook.create_sheet("TDR")
     workbook.create_sheet("Key")
     tdr.append(["Batch code", "EECode", "Lastname", "Firstname", "HomeDepartment", "Pay Class", "Badge", "Date", "Text to Col", "InPunchTime", "OutPunchTime", "Department", "EarnCode", "Hours", "Dollars", "Employee Approved", "Supervisor Approved", "Tax Profile", "Home Department Desc", "Dist Department Desc", "Job", "Employee code", "Phase", "Cost Code", "Cost type", "Home Department", "Department", "Phase Adj", "Phase", "Pay type"])
     tdr.append(["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "=B2", "=W2", "", "=Y2", "", "=L2", "", "=W2", '=IFERROR(VLOOKUP(M2,Key!$M$25:$N$33,2,FALSE),"NL")'])
+    workbook.save(path)
+    return path
+
+
+def make_real_template_shape(path: Path) -> Path:
+    workbook = Workbook()
+    pu = workbook.active
+    pu.title = "PU"
+    pu.append(["Batch code", "Employee code"])
+    pu.cell(row=2, column=2).value = "=TDR!V3"
+    pu.cell(row=3, column=2).value = "=TDR!V3"
+    pu.cell(row=4, column=2).value = "=TDR!V4"
+    pu.cell(row=4, column=9).value = "=TDR!H4"
+    pu.cell(row=4, column=9).number_format = "m/d/yyyy"
+    pu.cell(row=4, column=22).value = "=TDR!O4"
+    pu.cell(row=4, column=22).number_format = "0.00"
+    tdr = workbook.create_sheet("TDR")
+    workbook.create_sheet("Key")
+    tdr.append([None, None, None, None, None, None, None, None, "ADD"])
+    tdr.append(["Batch code", "EECode", "Lastname", "Firstname", "HomeDepartment", "Pay Class", "Badge", "Date", "Text to Col", "InPunchTime", "OutPunchTime", "Department", "EarnCode", "Hours", "Dollars", "Employee Approved", "Supervisor Approved", "Tax Profile", "Home Department Desc", "Dist Department Desc", "Job", "Employee code", "Phase", "Cost Code", "Cost type", "Home Department", "Department", "Phase Adj", "Phase", "Pay type"])
+    tdr.append(["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "=B3", "=W3", "", "=Y3", "", "=L3", "", "=W3", '=IFERROR(VLOOKUP(M3,Key!$M$25:$N$33,2,FALSE),"NL")'])
     workbook.save(path)
     return path
 
@@ -75,6 +99,50 @@ def test_write_tdr_rows_adds_rows_and_copies_formula_columns(tmp_path: Path) -> 
     assert sheet["N3"].value == 0
     assert sheet["O3"].value == 55.25
     assert sheet["V3"].value == "=B3"
+
+
+def test_write_tdr_rows_preserves_real_template_headers_and_starts_on_row_three(tmp_path: Path) -> None:
+    audit_path = tmp_path / "audit.xlsx"
+    make_real_template_shape(audit_path)
+
+    result = write_tdr_rows(audit_path, [make_payroll_row(), make_payroll_row("E101")])
+
+    workbook = load_workbook(audit_path, data_only=False)
+    try:
+        sheet = workbook["TDR"]
+        assert sheet["A2"].value == "Batch code"
+        assert sheet["B2"].value == "EECode"
+        assert sheet["A3"].value == "CD0529143708"
+        assert sheet["B3"].value == "E100"
+        assert sheet["V3"].value == "=B3"
+        assert sheet["A4"].value == "CD0529143708"
+        assert sheet["B4"].value == "E101"
+        assert sheet["V4"].value == "=B4"
+        assert result.expected_output_rows == 3
+    finally:
+        workbook.close()
+
+
+def test_write_tdr_rows_extends_pu_formulas_to_cover_additional_source_rows(tmp_path: Path) -> None:
+    audit_path = tmp_path / "audit.xlsx"
+    make_real_template_shape(audit_path)
+
+    result = write_tdr_rows(
+        audit_path,
+        [make_payroll_row(), make_payroll_row("E101"), make_payroll_row("E102")],
+    )
+
+    workbook = load_workbook(audit_path, data_only=False)
+    try:
+        pu = workbook["PU"]
+        assert pu["B5"].value == "=TDR!V5"
+        assert pu["I5"].value == "=TDR!H5"
+        assert pu["I5"].number_format == "m/d/yyyy"
+        assert pu["V5"].value == "=TDR!O5"
+        assert pu["V5"].number_format == "0.00"
+        assert result.expected_output_rows == 4
+    finally:
+        workbook.close()
 
 
 def test_write_tdr_rows_writes_numeric_employee_codes_for_excel_lookup(tmp_path: Path) -> None:

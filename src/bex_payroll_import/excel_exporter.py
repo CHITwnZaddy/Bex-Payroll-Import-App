@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Protocol
 
 from bex_payroll_import.errors import ExcelAutomationError
+from bex_payroll_import.models import FINAL_CSV_COLUMN_COUNT
 
 
 @dataclass(frozen=True)
@@ -79,24 +80,36 @@ def export_pu_csv_with_excel(
     workbook_path: Path,
     csv_path: Path,
     backend: ExcelBackend | None = None,
+    batch_code: str | None = None,
 ) -> ExcelExportResult:
     selected_backend = backend or Win32ExcelBackend()
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     selected_backend.recalculate_and_export(workbook_path, csv_path)
-    remove_pu_header_row(csv_path)
+    normalize_pu_csv(csv_path, batch_code)
     return ExcelExportResult(csv_path=csv_path)
 
 
-def remove_pu_header_row(csv_path: Path) -> None:
+def normalize_pu_csv(csv_path: Path, batch_code: str | None) -> None:
     with csv_path.open(newline="", encoding="utf-8") as csv_file:
         rows = list(csv.reader(csv_file))
     if not rows:
         return
 
     first_cells = [cell.strip().lower() for cell in rows[0]]
-    if "batch code" not in first_cells and "employee code" not in first_cells:
-        return
+    if "batch code" in first_cells or "employee code" in first_cells:
+        rows = rows[1:]
+
+    normalized_rows = []
+    for row in rows:
+        employee_code = row[1].strip() if len(row) > 1 else ""
+        if not employee_code:
+            continue
+        normalized_row = row[:FINAL_CSV_COLUMN_COUNT]
+        normalized_row.extend([""] * (FINAL_CSV_COLUMN_COUNT - len(normalized_row)))
+        if batch_code is not None:
+            normalized_row[0] = batch_code
+        normalized_rows.append(normalized_row)
 
     with csv_path.open("w", newline="", encoding="utf-8") as csv_file:
         writer = csv.writer(csv_file)
-        writer.writerows(rows[1:])
+        writer.writerows(normalized_rows)

@@ -9,6 +9,7 @@ from pathlib import Path
 TDR_SHEET_NAME = "TDR"
 PU_SHEET_NAME = "PU"
 KEY_SHEET_NAME = "Key"
+FINAL_CSV_COLUMN_COUNT = 22
 
 FINAL_OUTPUT_COLUMNS = [
     "Batch code",

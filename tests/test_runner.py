@@ -1,3 +1,4 @@
+import csv
 from datetime import date, datetime
 from pathlib import Path
 
@@ -13,7 +14,34 @@ from tests.helpers import save_workbook
 class FakeExcelBackend:
     def recalculate_and_export(self, workbook_path: Path, csv_path: Path) -> None:
         csv_path.parent.mkdir(parents=True, exist_ok=True)
-        csv_path.write_text("CD0529143708,E100,DLPTO,REG,8,100,200,L,04/12/2026,0\n", encoding="utf-8")
+        workbook = load_workbook(workbook_path, data_only=False)
+        try:
+            tdr = workbook["TDR"]
+            rows = []
+            for row_number in range(2, tdr.max_row + 1):
+                batch_code = tdr.cell(row=row_number, column=1).value
+                if not batch_code or batch_code == "Batch code":
+                    continue
+                pay_type = str(tdr.cell(row=row_number, column=13).value or "")
+                is_expense = pay_type.startswith("EXP REIM")
+                output = [
+                    str(batch_code),
+                    f"E{row_number:03d}",
+                    "DLPTO",
+                    pay_type if is_expense else "V",
+                    "" if is_expense else str(tdr.cell(row=row_number, column=14).value or ""),
+                    "",
+                    "",
+                    "L" if is_expense else "",
+                    "04/12/2026",
+                ]
+                output.extend([""] * 12)
+                output.append(str(tdr.cell(row=row_number, column=15).value or "") if is_expense else "")
+                rows.append(output)
+        finally:
+            workbook.close()
+        with csv_path.open("w", newline="", encoding="utf-8") as csv_file:
+            csv.writer(csv_file).writerows(rows)
 
 
 class HeaderOnlyExcelBackend:
@@ -26,6 +54,9 @@ def make_template(path: Path) -> Path:
     workbook = Workbook()
     pu = workbook.active
     pu.title = "PU"
+    pu.append(["Batch code", "Employee code"])
+    for row_number in range(2, 12):
+        pu.cell(row=row_number, column=2).value = f"=TDR!V{row_number}"
     workbook.create_sheet("Key")
     tdr = workbook.create_sheet("TDR")
     tdr.append(["Batch code", "EECode", "Lastname", "Firstname", "HomeDepartment", "Pay Class", "Badge", "Date", "Text to Col", "InPunchTime", "OutPunchTime", "Department", "EarnCode", "Hours", "Dollars", "Employee Approved", "Supervisor Approved", "Tax Profile", "Home Department Desc", "Dist Department Desc", "Job", "Employee code", "Phase", "Cost Code", "Cost type", "Home Department", "Department", "Phase Adj", "Phase", "Pay type"])
@@ -41,6 +72,9 @@ def make_template_with_real_key_shape(path: Path) -> Path:
     workbook = Workbook()
     pu = workbook.active
     pu.title = "PU"
+    pu.append(["Batch code", "Employee code"])
+    for row_number in range(2, 12):
+        pu.cell(row=row_number, column=2).value = f"=TDR!V{row_number}"
     key = workbook.create_sheet("Key")
     key.append(["Code", "Dep", "Office", None, "Foreman", "Phase", "Category", None, "Code", "Name"])
     key.append(["BAKKEN", "6", "N", None, "BAKKEN", 1, 1010, None, 48, "BAKKEN"])
@@ -96,6 +130,7 @@ def test_run_payroll_import_success_with_expenses(tmp_path: Path) -> None:
     assert outputs.payroll_csv_path.exists()
     assert outputs.audit_workbook_path.exists()
     assert outputs.validation_path.exists()
+    assert outputs.validation_path.name.startswith("ValidationReport_")
 
     workbook = load_workbook(outputs.audit_workbook_path, data_only=False)
     try:
@@ -154,6 +189,7 @@ def test_run_payroll_import_uses_tdr_employee_codes_for_expenses(tmp_path: Path)
     )
 
     assert outputs.payroll_csv_path is not None
+    assert outputs.validation_path.name.startswith("ValidationReport_")
     workbook = load_workbook(outputs.audit_workbook_path, data_only=False)
     try:
         tdr = workbook["TDR"]

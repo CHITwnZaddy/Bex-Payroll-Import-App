@@ -65,16 +65,26 @@ def run_payroll_import(
         return validation_error_outputs(batch_code, paths, report)
 
     try:
-        write_tdr_rows(paths.audit_workbook_path, payroll_rows)
+        template_result = write_tdr_rows(paths.audit_workbook_path, payroll_rows)
     except Exception as exc:
         report.add_error(str(exc), SOURCE_FIX, source=SOURCE_TEMPLATE)
         return validation_error_outputs(batch_code, paths, report)
 
     exported_csv_path: Path | None = None
     try:
-        export_pu_csv_with_excel(paths.audit_workbook_path, paths.payroll_csv_path, backend=excel_backend)
+        export_pu_csv_with_excel(
+            paths.audit_workbook_path,
+            paths.payroll_csv_path,
+            backend=excel_backend,
+            batch_code=batch_code,
+        )
         exported_csv_path = paths.payroll_csv_path
-        validate_final_csv(paths.payroll_csv_path, report)
+        validate_final_csv(
+            paths.payroll_csv_path,
+            report,
+            expected_batch_code=batch_code,
+            expected_output_rows=template_result.expected_output_rows,
+        )
     except Exception as exc:
         report.add_error(str(exc), SOURCE_FIX, source=SOURCE_EXPORT)
 

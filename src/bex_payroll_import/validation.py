@@ -6,8 +6,11 @@ from io import StringIO
 from pathlib import Path
 from typing import Literal
 
+from bex_payroll_import.models import FINAL_CSV_COLUMN_COUNT
+
 
 Severity = Literal["ERROR", "WARNING"]
+LOOKUP_ERROR_VALUES = {"NL", "#N/A", "#REF!", "#VALUE!", "#NAME?"}
 
 
 @dataclass(frozen=True)
@@ -90,7 +93,13 @@ def write_validation_csv(report: ValidationReport, output_path: Path) -> None:
             )
 
 
-def validate_final_csv(csv_path: Path, report: ValidationReport) -> None:
+def validate_final_csv(
+    csv_path: Path,
+    report: ValidationReport,
+    *,
+    expected_batch_code: str | None = None,
+    expected_output_rows: int | None = None,
+) -> None:
     no_valid_rows_message = "Final PU output has no valid rows."
     no_valid_rows_fix = "Confirm the Time Detail Report has payroll rows and rerun."
 
@@ -127,3 +136,97 @@ def validate_final_csv(csv_path: Path, report: ValidationReport) -> None:
             "Export the PU data rows without headers and rerun.",
             source="PU CSV",
         )
+        return
+
+    if expected_output_rows is not None and len(rows) != expected_output_rows:
+        report.add_error(
+            f"Expected {expected_output_rows} payroll rows but found {len(rows)}.",
+            "Do not import this file. Confirm every source row reached the PU output and rerun.",
+            source="PU CSV",
+        )
+
+    for row_number, row in enumerate(rows, start=1):
+        validate_final_csv_row(row, row_number, report, expected_batch_code)
+
+
+def validate_final_csv_row(
+    row: list[str],
+    row_number: int,
+    report: ValidationReport,
+    expected_batch_code: str | None,
+) -> None:
+    if len(row) != FINAL_CSV_COLUMN_COUNT:
+        report.add_error(
+            f"Expected {FINAL_CSV_COLUMN_COUNT} columns but found {len(row)}.",
+            "Do not import this file. Regenerate the payroll CSV using the app.",
+            row_number=row_number,
+            source="PU CSV",
+        )
+        return
+
+    values = [cell.strip() for cell in row]
+    for column_number, value in enumerate(values, start=1):
+        if value.upper() in LOOKUP_ERROR_VALUES:
+            report.add_error(
+                f"Excel lookup returned {value} in column {column_number}.",
+                "Correct the source data or template lookup and rerun.",
+                row_number=row_number,
+                source="PU CSV",
+            )
+
+    required_fields = {
+        "Batch Code": values[0],
+        "Employee Code": values[1],
+        "Department": values[2],
+        "Pay Type": values[3],
+        "Date": values[8],
+    }
+    for field_name, value in required_fields.items():
+        require_output_value(field_name, value, row_number, report)
+
+    if expected_batch_code is not None and values[0] != expected_batch_code:
+        report.add_error(
+            f"Batch Code must be {expected_batch_code}, found {values[0] or 'blank'}.",
+            "Regenerate the payroll CSV so every row uses the current batch code.",
+            row_number=row_number,
+            source="PU CSV",
+        )
+
+    department = values[2].upper()
+    pay_type = values[3].upper()
+    is_expense = pay_type.startswith("EXP REIM")
+
+    if is_expense:
+        require_output_value("Dollars", values[21], row_number, report)
+        return
+
+    if department == "DLPTO":
+        require_output_value("Hours", values[4], row_number, report)
+        if pay_type != "V":
+            report.add_error(
+                f"DLPTO time rows require Pay Type V, found {values[3] or 'blank'}.",
+                "Correct the DLPTO pay rule and rerun.",
+                row_number=row_number,
+                source="PU CSV",
+            )
+
+    if department not in {"1", "5", "DLPTO"}:
+        require_output_value("Job", values[5], row_number, report)
+        require_output_value("Phase", values[6], row_number, report)
+        require_output_value("Cost Type", values[7], row_number, report)
+
+
+def require_output_value(
+    field_name: str,
+    value: str,
+    row_number: int,
+    report: ValidationReport,
+) -> None:
+    if value:
+        return
+    report.add_error(
+        f"{field_name} is required but blank.",
+        "Correct the source data or template formula and rerun.",
+        row_number=row_number,
+        source="PU CSV",
+    )
