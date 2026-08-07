@@ -8,7 +8,7 @@ from openpyxl import load_workbook
 
 from bex_payroll_import.key_lookup import EmployeeLookup, parse_expense_employee
 from bex_payroll_import.models import NormalizedPayrollRow
-from bex_payroll_import.spreadsheet_io import find_header_row, normalize_header
+from bex_payroll_import.spreadsheet_io import HeaderRow, find_header_row, normalize_header
 
 
 TDR_REQUIRED_COLUMNS = ["EECode", "Lastname", "Firstname", "Department", "EarnCode", "EarnHours"]
@@ -55,7 +55,16 @@ def normalize_tdr_file(tdr_path: Path, batch_code: str) -> list[NormalizedPayrol
 
 def load_employee_lookup_from_tdr(tdr_path: Path) -> EmployeeLookup:
     header_row = find_tdr_header_row(tdr_path)
-    workbook = load_workbook(tdr_path, read_only=True, data_only=True)
+    return load_employee_lookup_from_header(tdr_path, header_row)
+
+
+def load_employee_lookup_from_template_tdr(template_path: Path) -> EmployeeLookup:
+    header_row = find_header_row(template_path, ["EECode", "Lastname", "Firstname"])
+    return load_employee_lookup_from_header(template_path, header_row)
+
+
+def load_employee_lookup_from_header(workbook_path: Path, header_row: HeaderRow) -> EmployeeLookup:
+    workbook = load_workbook(workbook_path, read_only=True, data_only=True)
     code_by_name: dict[tuple[str, str], str] = {}
     try:
         sheet = workbook[header_row.sheet_name]

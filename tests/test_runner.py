@@ -203,6 +203,60 @@ def test_run_payroll_import_uses_tdr_employee_codes_for_expenses(tmp_path: Path)
         workbook.close()
 
 
+def test_run_payroll_import_uses_template_tdr_for_expense_only_employee(tmp_path: Path) -> None:
+    template_path = make_template_with_real_key_shape(tmp_path / "template.xlsx")
+    workbook = load_workbook(template_path)
+    try:
+        tdr = workbook["TDR"]
+        tdr["A2"] = "OLD"
+        tdr["B2"] = 40
+        tdr["C2"] = "BUECKENDORF WRIGHT"
+        tdr["D2"] = "GRACE"
+        workbook.save(template_path)
+    finally:
+        workbook.close()
+
+    source_dir = tmp_path / "source"
+    source_dir.mkdir()
+    tdr_path = save_workbook(
+        source_dir / "tdr.xlsx",
+        "Time Detail Repor",
+        [
+            ["EECode", "Lastname", "Firstname", "Date", "Department", "EarnCode", "EarnHours"],
+            ["0048", "BAKER", "KENNETH", "04/12/2026", "DLPTO", "R", 8],
+        ],
+    )
+    expense_path = save_workbook(
+        source_dir / "expense.xlsx",
+        "Expense Transacti",
+        [
+            ["Employee", "Check Date", "Paid Amount"],
+            ["BUECKENDORF WRIGHT, GRACE", "04/17/2026", 55.54],
+        ],
+    )
+
+    outputs = run_payroll_import(
+        RunInputs(
+            template_path=template_path,
+            tdr_path=tdr_path,
+            expense_path=expense_path,
+            expense_skipped=False,
+        ),
+        now=datetime(2026, 8, 7, 11, 37, 10),
+        excel_backend=FakeExcelBackend(),
+    )
+
+    assert outputs.validation_path.name.startswith("ValidationReport_")
+    workbook = load_workbook(outputs.audit_workbook_path, data_only=False)
+    try:
+        tdr = workbook["TDR"]
+        assert tdr["B3"].value == 40
+        assert tdr["M3"].value == "EXP REIM"
+        assert tdr["O3"].value == 55.54
+    finally:
+        workbook.close()
+
+
 def test_run_payroll_import_hard_stops_when_expense_missing_and_not_confirmed(tmp_path: Path) -> None:
     template_path = make_template(tmp_path / "template.xlsx")
     source_dir = tmp_path / "source"

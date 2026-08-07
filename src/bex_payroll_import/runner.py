@@ -8,6 +8,7 @@ from bex_payroll_import.excel_exporter import ExcelBackend, export_pu_csv_with_e
 from bex_payroll_import.models import NormalizedPayrollRow, RunInputs, RunOutputs
 from bex_payroll_import.normalizers import (
     load_employee_lookup_from_tdr,
+    load_employee_lookup_from_template_tdr,
     normalize_expense_file,
     normalize_tdr_file,
 )
@@ -148,6 +149,8 @@ def normalize_source_rows(
 
     try:
         lookup = load_employee_lookup_from_tdr(inputs.tdr_path)
+        template_lookup = load_employee_lookup_from_template_tdr(inputs.template_path)
+        lookup = lookup.with_fallback(template_lookup)
         rows.extend(normalize_expense_file(inputs.expense_path, lookup, batch_code, default_expense_check_date))
     except Exception as exc:
         report.add_error(str(exc), SOURCE_FIX, source=SOURCE_EXPENSE)

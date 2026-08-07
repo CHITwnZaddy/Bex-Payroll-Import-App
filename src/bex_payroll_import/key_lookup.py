@@ -9,15 +9,24 @@ from bex_payroll_import.spreadsheet_io import build_header_map, normalize_header
 
 
 class EmployeeLookup:
-    def __init__(self, code_by_name: dict[tuple[str, str], str]) -> None:
+    def __init__(
+        self,
+        code_by_name: dict[tuple[str, str], str],
+        fallback: EmployeeLookup | None = None,
+    ) -> None:
         self._code_by_name = code_by_name
+        self._fallback = fallback
 
     def resolve_code(self, first_name: str, last_name: str) -> str:
         key = (normalize_name(first_name), normalize_name(last_name))
-        try:
+        if key in self._code_by_name:
             return self._code_by_name[key]
-        except KeyError as exc:
-            raise KeyError(f"No employee code found for {first_name} {last_name}") from exc
+        if self._fallback is not None:
+            return self._fallback.resolve_code(first_name, last_name)
+        raise KeyError(f"No employee code found for {first_name} {last_name}")
+
+    def with_fallback(self, fallback: EmployeeLookup) -> EmployeeLookup:
+        return EmployeeLookup(self._code_by_name, fallback=fallback)
 
 
 def normalize_name(value: str) -> str:
