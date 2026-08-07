@@ -142,18 +142,18 @@ Expense row mapping:
 
 | Output concept | Expense source or value |
 | --- | --- |
-| Date | `Expense Date` |
-| Employee | parse `Employee` into first and last name, then resolve through `Key` |
-| Hours | `0` |
-| Pay type | `EXP REIM` |
-| Department | `DLPTO` |
+| Date | `Check Date`; use the run date when blank |
+| Employee | parse `Employee` into first and last name, resolve through the current TDR, then use the template TDR as an exact-name fallback |
+| Hours | blank |
+| Pay type | `EXP REIMB` |
+| Department | `1` |
 | Job | blank |
 | Phase | blank |
-| Cost Type | `L` |
+| Cost Type | blank |
 | Dollars | `Paid Amount` |
 | Batch code | generated `CDMMDDHHMMSS` |
 
-The final CSV includes the dollar column in phase 1. If Vista rejects that import shape, remove that column in a follow-up change after the first failed import proves the issue.
+The final CSV includes the dollar column. This expense shape matches a known Spectrum-accepted payroll import.
 
 ## Workbook behavior
 
@@ -189,9 +189,6 @@ Warnings allow final CSV creation.
 Warnings:
 
 - Expense Transaction file intentionally skipped
-- dollar column included in final CSV
-- expense rows use `Hours=0`
-- expense rows have blank Job and Phase
 - output date folder already exists
 - row count is unusually low or unusually high
 

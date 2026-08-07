@@ -42,6 +42,7 @@ def write_tdr_rows(audit_workbook_path: Path, rows: list[NormalizedPayrollRow]) 
             target_row = data_start_row + offset
             write_tdr_source_cells(sheet, target_row, payroll_row)
             copy_formula_cells(sheet, formula_cells, target_row)
+            apply_expense_output_overrides(sheet, target_row, payroll_row)
 
         result = inspect_pu_formula_coverage(workbook, data_start_row, len(rows))
         workbook.save(audit_workbook_path)
@@ -153,11 +154,22 @@ def write_tdr_source_cells(sheet, row_number: int, payroll_row: NormalizedPayrol
     sheet.cell(row=row_number, column=8).value = payroll_row.work_date
     sheet.cell(row=row_number, column=12).value = payroll_row.department
     sheet.cell(row=row_number, column=13).value = excel_lookup_code(payroll_row.pay_type)
-    sheet.cell(row=row_number, column=14).value = float(payroll_row.hours)
+    sheet.cell(row=row_number, column=14).value = (
+        None if payroll_row.hours is None else float(payroll_row.hours)
+    )
     sheet.cell(row=row_number, column=15).value = float(payroll_row.dollars or 0)
     sheet.cell(row=row_number, column=21).value = payroll_row.job
     sheet.cell(row=row_number, column=23).value = payroll_row.phase
     sheet.cell(row=row_number, column=25).value = payroll_row.cost_type
+
+
+def apply_expense_output_overrides(sheet, row_number: int, payroll_row: NormalizedPayrollRow) -> None:
+    if payroll_row.pay_type != "EXP REIMB":
+        return
+    sheet.cell(row=row_number, column=23).value = None
+    sheet.cell(row=row_number, column=25).value = None
+    sheet.cell(row=row_number, column=27).value = "1"
+    sheet.cell(row=row_number, column=30).value = "EXP REIMB"
 
 
 def copy_formula_cells(

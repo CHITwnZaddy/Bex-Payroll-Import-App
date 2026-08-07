@@ -27,12 +27,12 @@ class FakeExcelBackend:
                 output = [
                     str(batch_code),
                     f"E{row_number:03d}",
-                    "DLPTO",
+                    "1" if is_expense else "DLPTO",
                     pay_type if is_expense else "V",
                     "" if is_expense else str(tdr.cell(row=row_number, column=14).value or ""),
                     "",
                     "",
-                    "L" if is_expense else "",
+                    "",
                     "04/12/2026",
                 ]
                 output.extend([""] * 12)
@@ -137,11 +137,13 @@ def test_run_payroll_import_success_with_expenses(tmp_path: Path) -> None:
         tdr = workbook["TDR"]
         assert tdr["B3"].value == "E100"
         assert cell_date(tdr["H3"].value) == date(2026, 4, 15)
-        assert tdr["L3"].value == "DLPTO"
-        assert tdr["M3"].value == "EXP REIM"
-        assert tdr["N3"].value == 0
+        assert tdr["L3"].value == "1"
+        assert tdr["M3"].value == "EXP REIMB"
+        assert tdr["N3"].value is None
         assert tdr["O3"].value == 55
-        assert tdr["Y3"].value == "=Y3"
+        assert tdr["Y3"].value is None
+        assert tdr["AA3"].value == "1"
+        assert tdr["AD3"].value == "EXP REIMB"
     finally:
         workbook.close()
 
@@ -194,10 +196,10 @@ def test_run_payroll_import_uses_tdr_employee_codes_for_expenses(tmp_path: Path)
     try:
         tdr = workbook["TDR"]
         assert tdr["B4"].value == 1009
-        assert tdr["M4"].value == "EXP REIM"
+        assert tdr["M4"].value == "EXP REIMB"
         assert tdr["O4"].value == 97.14
         assert tdr["B5"].value == 48
-        assert tdr["M5"].value == "EXP REIM"
+        assert tdr["M5"].value == "EXP REIMB"
         assert tdr["O5"].value == 41.61
     finally:
         workbook.close()
@@ -251,7 +253,7 @@ def test_run_payroll_import_uses_template_tdr_for_expense_only_employee(tmp_path
     try:
         tdr = workbook["TDR"]
         assert tdr["B3"].value == 40
-        assert tdr["M3"].value == "EXP REIM"
+        assert tdr["M3"].value == "EXP REIMB"
         assert tdr["O3"].value == 55.54
     finally:
         workbook.close()

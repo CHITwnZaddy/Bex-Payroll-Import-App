@@ -68,10 +68,11 @@ Before importing into Vista, inspect the generated CSV in Notepad without saving
 - no header row
 - one batch code on every row
 - expected employee codes
-- expense rows have `Hours=0`
-- expense rows use `Department=DLPTO`
-- expense rows use `Pay type=EXP REIM`
-- expense rows use `Cost Type=L`
+- expense rows have blank Hours, Job, Phase, and Cost Type
+- expense rows use `Department=1`
+- expense rows use `Pay type=EXP REIMB`
+- expense rows use `Check Date` for Date
+- expense rows use `Paid Amount` for Dollars
 
 If you open the CSV in Excel, close it without saving. Import the original generated CSV file into Vista.
 

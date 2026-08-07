@@ -194,10 +194,22 @@ def validate_final_csv_row(
 
     department = values[2].upper()
     pay_type = values[3].upper()
-    is_expense = pay_type.startswith("EXP REIM")
+    is_expense = pay_type.startswith("EXP REIM") or bool(values[21])
 
     if is_expense:
         require_output_value("Dollars", values[21], row_number, report)
+        require_output_match("Expense rows require Department 1", department, "1", row_number, report)
+        require_output_match(
+            "Expense rows require Pay Type EXP REIMB",
+            pay_type,
+            "EXP REIMB",
+            row_number,
+            report,
+        )
+        require_blank_output_value("Hours", values[4], row_number, report)
+        require_blank_output_value("Job", values[5], row_number, report)
+        require_blank_output_value("Phase", values[6], row_number, report)
+        require_blank_output_value("Cost Type", values[7], row_number, report)
         return
 
     if department == "DLPTO":
@@ -227,6 +239,39 @@ def require_output_value(
     report.add_error(
         f"{field_name} is required but blank.",
         "Correct the source data or template formula and rerun.",
+        row_number=row_number,
+        source="PU CSV",
+    )
+
+
+def require_output_match(
+    message: str,
+    value: str,
+    expected: str,
+    row_number: int,
+    report: ValidationReport,
+) -> None:
+    if value == expected:
+        return
+    report.add_error(
+        f"{message}, found {value or 'blank'}.",
+        "Regenerate the payroll CSV using the app's accepted expense mapping.",
+        row_number=row_number,
+        source="PU CSV",
+    )
+
+
+def require_blank_output_value(
+    field_name: str,
+    value: str,
+    row_number: int,
+    report: ValidationReport,
+) -> None:
+    if not value:
+        return
+    report.add_error(
+        f"Expense rows require blank {field_name}, found {value}.",
+        "Regenerate the payroll CSV using the app's accepted expense mapping.",
         row_number=row_number,
         source="PU CSV",
     )

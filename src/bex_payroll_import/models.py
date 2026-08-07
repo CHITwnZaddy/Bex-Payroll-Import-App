@@ -37,7 +37,7 @@ class NormalizedPayrollRow:
     employee_code: str
     department: str
     pay_type: str
-    hours: Decimal
+    hours: Decimal | None
     job: str
     phase: str
     cost_type: str

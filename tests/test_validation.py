@@ -199,7 +199,30 @@ def test_validate_final_csv_blocks_invalid_dlpto_time_row(tmp_path: Path) -> Non
     assert any("Hours is required" in message for message in messages)
 
 
-def test_validate_final_csv_allows_current_expense_mapping_until_rule_is_decided(tmp_path: Path) -> None:
+def test_validate_final_csv_allows_known_good_expense_mapping(tmp_path: Path) -> None:
+    csv_path = tmp_path / "PayrollImport.csv"
+    write_pu_rows(
+        csv_path,
+        [
+            make_pu_row(
+                department="1",
+                pay_type="EXP REIMB",
+                hours="",
+                job="",
+                phase="",
+                cost_type="",
+                dollars="55.25",
+            )
+        ],
+    )
+    report = ValidationReport()
+
+    validate_final_csv(csv_path, report)
+
+    assert report.has_errors is False
+
+
+def test_validate_final_csv_blocks_old_dlpto_expense_mapping(tmp_path: Path) -> None:
     csv_path = tmp_path / "PayrollImport.csv"
     write_pu_rows(
         csv_path,
@@ -207,7 +230,7 @@ def test_validate_final_csv_allows_current_expense_mapping_until_rule_is_decided
             make_pu_row(
                 department="DLPTO",
                 pay_type="EXP REIM",
-                hours="",
+                hours="0",
                 job="",
                 phase="",
                 cost_type="L",
@@ -219,7 +242,12 @@ def test_validate_final_csv_allows_current_expense_mapping_until_rule_is_decided
 
     validate_final_csv(csv_path, report)
 
-    assert report.has_errors is False
+    assert report.has_errors is True
+    messages = [message.message for message in report.messages]
+    assert any("Expense rows require Department 1" in message for message in messages)
+    assert any("Expense rows require Pay Type EXP REIMB" in message for message in messages)
+    assert any("Expense rows require blank Hours" in message for message in messages)
+    assert any("Expense rows require blank Cost Type" in message for message in messages)
 
 
 def test_validate_final_csv_allows_blank_hours_for_project_row_seen_in_known_good_import(tmp_path: Path) -> None:

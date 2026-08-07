@@ -109,12 +109,12 @@ def normalize_expense_file(
                 NormalizedPayrollRow(
                     batch_code=batch_code,
                     employee_code=lookup.resolve_code(identity.first_name, identity.last_name),
-                    department="DLPTO",
-                    pay_type="EXP REIM",
-                    hours=Decimal("0"),
+                    department="1",
+                    pay_type="EXP REIMB",
+                    hours=None,
                     job="",
                     phase="",
-                    cost_type="L",
+                    cost_type="",
                     work_date=date_value_or_default(
                         cell(row, header_row.header_map, "Check Date"),
                         default_check_date,

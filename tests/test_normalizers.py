@@ -198,12 +198,12 @@ def test_normalize_expense_file_applies_defaults(tmp_path: Path) -> None:
 
     assert len(rows) == 1
     assert rows[0].employee_code == "E100"
-    assert rows[0].department == "DLPTO"
-    assert rows[0].pay_type == "EXP REIM"
-    assert rows[0].hours == Decimal("0")
+    assert rows[0].department == "1"
+    assert rows[0].pay_type == "EXP REIMB"
+    assert rows[0].hours is None
     assert rows[0].job == ""
     assert rows[0].phase == ""
-    assert rows[0].cost_type == "L"
+    assert rows[0].cost_type == ""
     assert rows[0].work_date == date(2026, 4, 15)
     assert rows[0].dollars == Decimal("123.45")
 

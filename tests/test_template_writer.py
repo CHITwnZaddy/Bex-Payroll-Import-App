@@ -86,7 +86,7 @@ def test_write_tdr_rows_adds_rows_and_copies_formula_columns(tmp_path: Path) -> 
     make_template(audit_path)
     rows = [
         NormalizedPayrollRow("CD0529143708", "E100", "DLPTO", "REG", Decimal("8"), "100", "200", "L", date(2026, 4, 12), Decimal("0"), "Time Detail Report", 2),
-        NormalizedPayrollRow("CD0529143708", "E101", "DLPTO", "EXP REIM", Decimal("0"), "", "", "L", date(2026, 4, 15), Decimal("55.25"), "Expense Transaction", 2),
+        NormalizedPayrollRow("CD0529143708", "E101", "1", "EXP REIMB", None, "", "", "", date(2026, 4, 15), Decimal("55.25"), "Expense Transaction", 2),
     ]
 
     write_tdr_rows(audit_path, rows)
@@ -96,9 +96,11 @@ def test_write_tdr_rows_adds_rows_and_copies_formula_columns(tmp_path: Path) -> 
     assert sheet["A2"].value == "CD0529143708"
     assert sheet["B2"].value == "E100"
     assert sheet["H2"].value == date(2026, 4, 12)
-    assert sheet["N3"].value == 0
+    assert sheet["N3"].value is None
     assert sheet["O3"].value == 55.25
     assert sheet["V3"].value == "=B3"
+    assert sheet["AA3"].value == "1"
+    assert sheet["AD3"].value == "EXP REIMB"
 
 
 def test_write_tdr_rows_preserves_real_template_headers_and_starts_on_row_three(tmp_path: Path) -> None:
