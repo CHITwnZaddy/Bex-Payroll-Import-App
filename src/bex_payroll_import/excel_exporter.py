@@ -108,6 +108,12 @@ def normalize_pu_csv(csv_path: Path, batch_code: str | None) -> None:
         normalized_row.extend([""] * (FINAL_CSV_COLUMN_COUNT - len(normalized_row)))
         if batch_code is not None:
             normalized_row[0] = batch_code
+        if normalized_row[3].strip().upper().startswith("EXP REIM"):
+            normalized_row[2] = "1"
+            normalized_row[3] = "EXP REIMB"
+            normalized_row[4:8] = [""] * 4
+        else:
+            normalized_row[21] = ""
         normalized_rows.append(normalized_row)
 
     with csv_path.open("w", newline="", encoding="utf-8") as csv_file:

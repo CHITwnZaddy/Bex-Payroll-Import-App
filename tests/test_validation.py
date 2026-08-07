@@ -258,3 +258,14 @@ def test_validate_final_csv_allows_blank_hours_for_project_row_seen_in_known_goo
     validate_final_csv(csv_path, report)
 
     assert report.has_errors is False
+
+
+def test_validate_final_csv_blocks_dollars_on_time_row(tmp_path: Path) -> None:
+    csv_path = tmp_path / "PayrollImport.csv"
+    write_pu_rows(csv_path, [make_pu_row(dollars="0.00")])
+    report = ValidationReport()
+
+    validate_final_csv(csv_path, report)
+
+    assert report.has_errors is True
+    assert any("Time rows require blank Dollars" in message.message for message in report.messages)

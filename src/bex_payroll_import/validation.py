@@ -194,7 +194,7 @@ def validate_final_csv_row(
 
     department = values[2].upper()
     pay_type = values[3].upper()
-    is_expense = pay_type.startswith("EXP REIM") or bool(values[21])
+    is_expense = pay_type.startswith("EXP REIM")
 
     if is_expense:
         require_output_value("Dollars", values[21], row_number, report)
@@ -211,6 +211,14 @@ def validate_final_csv_row(
         require_blank_output_value("Phase", values[6], row_number, report)
         require_blank_output_value("Cost Type", values[7], row_number, report)
         return
+
+    if values[21]:
+        report.add_error(
+            f"Time rows require blank Dollars, found {values[21]}.",
+            "Regenerate the payroll CSV so Dollars are populated only on expense rows.",
+            row_number=row_number,
+            source="PU CSV",
+        )
 
     if department == "DLPTO":
         require_output_value("Hours", values[4], row_number, report)

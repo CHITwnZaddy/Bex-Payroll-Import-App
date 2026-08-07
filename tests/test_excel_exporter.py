@@ -31,10 +31,15 @@ class FakeExcelBackend:
 
 class WideExcelBackend:
     def recalculate_and_export(self, workbook_path: Path, csv_path: Path) -> None:
+        project_row = ["OLD", "E100", "6", "R", "8", "25009", "011010", "L", "4/12/2026"] + [""] * 34
+        project_row[21] = "0.00"
+        expense_row = ["OLD", "E102", "1", "EXP REIMB", "", "", "", "0", "4/15/2026"] + [""] * 34
+        expense_row[21] = "55.25"
         rows = [
             ["Batch code", "Employee code", "Department", "Pay type", "Hours", "Job", "Phase", "Cost type", "Date"] + [""] * 34,
-            ["OLD", "E100", "6", "R", "8", "25009", "011010", "L", "4/12/2026"] + [""] * 34,
+            project_row,
             ["OLD", "E101", "1", "R", "8", "", "", "", "4/12/2026"] + [""] * 34,
+            expense_row,
             ["OLD"] + [""] * 42,
         ]
         csv_path.parent.mkdir(parents=True, exist_ok=True)
@@ -80,10 +85,13 @@ def test_export_pu_csv_writes_only_employee_rows_and_exactly_22_columns(tmp_path
 
     with csv_path.open(newline="", encoding="utf-8") as csv_file:
         rows = list(csv.reader(csv_file))
-    assert len(rows) == 2
+    assert len(rows) == 3
     assert {len(row) for row in rows} == {22}
-    assert [row[0] for row in rows] == ["CD0529143708", "CD0529143708"]
-    assert [row[1] for row in rows] == ["E100", "E101"]
+    assert [row[0] for row in rows] == ["CD0529143708"] * 3
+    assert [row[1] for row in rows] == ["E100", "E101", "E102"]
+    assert rows[0][21] == ""
+    assert rows[2][2:9] == ["1", "EXP REIMB", "", "", "", "", "4/15/2026"]
+    assert rows[2][21] == "55.25"
 
 
 class FakeCsvWorkbook:
